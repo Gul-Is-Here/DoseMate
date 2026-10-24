@@ -9,6 +9,9 @@ abstract class AppColors {
   static const primaryFixedDim = Color(0xFF80D5CB);
   static const onPrimaryFixed = Color(0xFF00201D);
   static const secondary = Color(0xFF904D00);
+  static const secondaryContainer = Color(0xFFFE932C);
+  static const onSecondaryContainer = Color(0xFF663500);
+  static const onSecondaryFixedVariant = Color(0xFF6E3900);
   static const secondaryFixed = Color(0xFFFFDCC3);
   static const onSecondaryFixed = Color(0xFF2F1500);
   static const surface = Color(0xFFF9F9FF);

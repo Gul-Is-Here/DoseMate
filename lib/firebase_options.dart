@@ -52,28 +52,30 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDt97YA38t5uMXMuZfuHqeaAfA8D7oYF74',
-    appId: '1:1074770041543:android:1f7af78744b126fc1bbce2',
+    appId: '1:1074770041543:android:0f6f81016b0edcfa1bbce2',
     messagingSenderId: '1074770041543',
     projectId: 'dosemate-70150',
     storageBucket: 'dosemate-70150.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBRpCgsCauNvvJ1ekv0ReelGJVKe-MOLUA',
-    appId: '1:1074770041543:ios:5f774d0842b6e69b1bbce2',
+    appId: '1:1074770041543:ios:faa5479ac394f65a1bbce2',
     messagingSenderId: '1074770041543',
     projectId: 'dosemate-70150',
     storageBucket: 'dosemate-70150.firebasestorage.app',
-    iosBundleId: 'com.example.dosemate',
+    androidClientId: '1074770041543-qeo41nh5m6ens9897h4s7hb4ln24sn36.apps.googleusercontent.com',
+    iosClientId: '1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk.apps.googleusercontent.com',
+    iosBundleId: 'com.dosemate.app',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyBRpCgsCauNvvJ1ekv0ReelGJVKe-MOLUA',
-    appId: '1:1074770041543:ios:5f774d0842b6e69b1bbce2',
+    appId: '1:1074770041543:ios:faa5479ac394f65a1bbce2',
     messagingSenderId: '1074770041543',
     projectId: 'dosemate-70150',
     storageBucket: 'dosemate-70150.firebasestorage.app',
-    iosBundleId: 'com.example.dosemate',
+    androidClientId: '1074770041543-qeo41nh5m6ens9897h4s7hb4ln24sn36.apps.googleusercontent.com',
+    iosClientId: '1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk.apps.googleusercontent.com',
+    iosBundleId: 'com.dosemate.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

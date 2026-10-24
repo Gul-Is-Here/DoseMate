@@ -49,7 +49,14 @@ class PrimaryButton extends StatelessWidget {
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(label, style: AppTextStyles.labelLg),
+                    // Wraps instead of overflowing on narrow screens.
+                    Flexible(
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.labelLg,
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Icon(Icons.arrow_forward, size: iconSize),
                   ],

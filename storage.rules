@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Per-profile photos: private to the owning account, images only,
+    // under 5 MB, new files only (each upload uses a fresh name).
+    match /users/{uid}/profiles/{profileId}/{fileName} {
+      allow read, delete: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && resource == null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|heic)');
+      allow update: if false;
+    }
+
+    // Medicine reference photos, same limits as profile photos.
+    match /users/{uid}/profiles/{profileId}/medicines/{medicineId}/{fileName} {
+      allow read, delete: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && resource == null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|heic)');
+      allow update: if false;
+    }
+
+    // Photos uploaded before profiles existed: kept readable and removable,
+    // no new uploads.
+    match /users/{uid}/profile/{fileName} {
+      allow read, delete: if isOwner(uid);
+      allow write: if false;
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

@@ -3,10 +3,11 @@ import 'package:get/get.dart';
 
 import '../../../app/routes/app_routes.dart';
 import '../../../core/utils/validators.dart';
+import '../../../data/models/user_profile.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 
-enum AccountFor { myself, caregiver }
+export '../../../data/models/user_profile.dart' show AccountFor;
 
 class SignupViewModel extends GetxController {
   final _auth = Get.find<AuthService>();
@@ -47,15 +48,21 @@ class SignupViewModel extends GetxController {
       );
       passwordController.clear();
       confirmPasswordController.clear();
-      _auth.goToRouteForUser();
+      await _auth.completeSignIn(
+        isNewAccount: true,
+        accountFor: accountFor.value,
+      );
     });
   }
 
   Future<void> signUpWithGoogle() async {
     if (_busy) return;
     await _run(isGoogleLoading, () async {
-      await _auth.repository.signInWithGoogle();
-      _auth.goToRouteForUser();
+      final isNewUser = await _auth.repository.signInWithGoogle();
+      await _auth.completeSignIn(
+        isNewAccount: isNewUser,
+        accountFor: accountFor.value,
+      );
     });
   }
 

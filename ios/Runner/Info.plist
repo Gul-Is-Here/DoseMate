@@ -66,6 +66,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>DoseMate uses the camera to take a profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DoseMate lets you choose a profile photo from your library.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -74,7 +78,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<!-- REVERSED_CLIENT_ID from GoogleService-Info.plist, for Google sign-in. -->
-				<string>com.googleusercontent.apps.1074770041543-0a8kaankuhbbndakea3s417scbr3dmbd</string>
+				<string>com.googleusercontent.apps.1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk</string>
 			</array>
 		</dict>
 	</array>

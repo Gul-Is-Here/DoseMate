@@ -34,7 +34,7 @@ class VerifyEmailViewModel extends GetxController {
       final verified = await _auth.repository.reloadEmailVerified();
       _auth.refreshUser();
       if (verified) {
-        _auth.goToRouteForUser();
+        await _auth.completeSignIn();
       } else {
         Get.snackbar(
           'Not verified yet',

@@ -4,8 +4,12 @@ abstract class Validators {
 
   static const minPasswordLength = 8;
 
-  static String? name(String value) =>
-      value.trim().isEmpty ? 'Enter your full name.' : null;
+  static String? name(String value) {
+    final name = value.trim();
+    if (name.isEmpty) return 'Enter your full name.';
+    if (name.length > 100) return 'Use 100 characters or fewer for the name.';
+    return null;
+  }
 
   static String? email(String value) {
     final email = value.trim();
@@ -25,6 +29,19 @@ abstract class Validators {
     if (!value.contains(RegExp(r'[A-Za-z]')) ||
         !value.contains(RegExp(r'\d'))) {
       return 'Use both letters and numbers.';
+    }
+    return null;
+  }
+
+  /// Optional field: empty is valid.
+  static String? optionalPhone(String value) {
+    final phone = value.trim();
+    if (phone.isEmpty) return null;
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (!RegExp(r'^\+?[\d\s().-]+$').hasMatch(phone) ||
+        digits.length < 7 ||
+        digits.length > 15) {
+      return 'Enter a valid emergency contact phone number.';
     }
     return null;
   }

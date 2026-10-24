@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../services/google_account_picker.dart';
+
 /// A user-facing auth error. [message] is safe to show in the UI.
 class AuthFailure implements Exception {
   const AuthFailure(this.message);
@@ -16,9 +18,11 @@ class AuthCancelled implements Exception {
 /// Thin wrapper over [FirebaseAuth]. Firebase holds the session; nothing
 /// sensitive (passwords, tokens) is stored or logged here.
 class AuthRepository {
-  AuthRepository(this._auth);
+  AuthRepository(this._auth, {GoogleAccountPicker? googlePicker})
+    : _google = googlePicker ?? GoogleAccountPicker();
 
   final FirebaseAuth _auth;
+  final GoogleAccountPicker _google;
 
   static const _cancelCodes = {
     'canceled',
@@ -62,15 +66,36 @@ class AuthRepository {
     () => _auth.signInWithEmailAndPassword(email: email, password: password),
   );
 
-  /// Signs in or creates an account with Google via Firebase's own provider
-  /// flow. Firebase rejects (rather than merges) an email that already
+  /// Signs in or creates an account with Google. On Android and iOS the
+  /// native account chooser supplies an ID token, so the app never hands
+  /// off to a browser; elsewhere Firebase's own provider flow is used. Firebase rejects (rather than merges) an email that already
   /// belongs to a different account with `account-exists-with-different-credential`.
-  Future<void> signInWithGoogle() => _guard(() {
+  /// Returns whether this sign in created the account.
+  Future<bool> signInWithGoogle() => _guard(() async {
     final provider = GoogleAuthProvider()
       ..setCustomParameters({'prompt': 'select_account'});
-    return kIsWeb
-        ? _auth.signInWithPopup(provider)
-        : _auth.signInWithProvider(provider);
+    final UserCredential credential;
+    if (kIsWeb) {
+      credential = await _auth.signInWithPopup(provider);
+    } else if (_google.isSupported) {
+      final String idToken;
+      try {
+        idToken = await _google.idToken();
+      } on GooglePickerCancelled {
+        throw const AuthCancelled();
+      } on GooglePickerFailure catch (e) {
+        if (kDebugMode) debugPrint('Google picker error: ${e.code}');
+        throw const AuthFailure(
+          "Couldn't open Google sign in. Check your connection and try again.",
+        );
+      }
+      credential = await _auth.signInWithCredential(
+        GoogleAuthProvider.credential(idToken: idToken),
+      );
+    } else {
+      credential = await _auth.signInWithProvider(provider);
+    }
+    return credential.additionalUserInfo?.isNewUser ?? false;
   });
 
   /// Completes silently when no account exists, so the response never reveals
@@ -93,7 +118,10 @@ class AuthRepository {
     return _auth.currentUser?.emailVerified ?? false;
   });
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    await _auth.signOut();
+    await _google.signOut();
+  }
 
   Future<T> _guard<T>(Future<T> Function() action) async {
     try {

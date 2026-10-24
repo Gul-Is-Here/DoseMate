@@ -25,3 +25,10 @@ abstract class AppTextStyles {
   static final labelMd = _base(14, 18, FontWeight.w600, 0.02);
   static final labelSm = _base(12, 16, FontWeight.w700, 0.03);
 }
+
+extension AppTextStyleWeight on TextStyle {
+  /// Changes the weight and loads the matching font file; a plain
+  /// `copyWith(fontWeight:)` keeps the original weight's file.
+  TextStyle weight(FontWeight weight) =>
+      GoogleFonts.plusJakartaSans(textStyle: copyWith(fontWeight: weight));
+}

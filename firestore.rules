@@ -1,0 +1,209 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Account-wide state shared by all of the account's profiles.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && validAccount(request.resource.data)
+        && createdAtUnchanged(request.resource.data);
+      allow delete: if false;
+
+      // Managed profiles (Myself, Parent, Spouse, Other). Not separate
+      // Firebase users: only the owning account can see or change them.
+      match /profiles/{profileId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && validProfile(uid, profileId, request.resource.data)
+          // New profiles stamp the server time; migrated ones keep their
+          // original creation time.
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.createdAt <= request.time;
+        allow update: if isOwner(uid)
+          && validProfile(uid, profileId, request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if false;
+
+        // Per-profile care records. Every path names the account and the
+        // profile, so one profile's records can never be read or written
+        // through another's.
+        match /medicines/{medicineId} {
+          allow read: if isOwner(uid);
+          allow create: if isOwner(uid)
+            && profileExists(uid, profileId)
+            && validMedicine(uid, profileId, medicineId, request.resource.data)
+            && request.resource.data.createdAt == request.time;
+          allow update: if isOwner(uid)
+            && validMedicine(uid, profileId, medicineId, request.resource.data)
+            && request.resource.data.createdAt == resource.data.createdAt;
+          allow delete: if isOwner(uid);
+        }
+
+        match /visits/{visitId} {
+          allow read: if isOwner(uid);
+          allow create: if isOwner(uid)
+            && profileExists(uid, profileId)
+            && validVisit(request.resource.data)
+            && request.resource.data.createdAt == request.time;
+          allow update: if isOwner(uid)
+            && validVisit(request.resource.data)
+            && request.resource.data.createdAt == resource.data.createdAt;
+          allow delete: if isOwner(uid);
+        }
+
+        // One log per scheduled dose: the id is medicineId_day_minutes.
+        match /doseLogs/{logId} {
+          allow read: if isOwner(uid);
+          allow create, update: if isOwner(uid)
+            && validDoseLog(logId, request.resource.data);
+          allow delete: if isOwner(uid);
+        }
+      }
+    }
+
+    function profileExists(uid, profileId) {
+      return exists(/databases/$(database)/documents/users/$(uid)/profiles/$(profileId));
+    }
+
+    function isDay(value) {
+      return value is string && value.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');
+    }
+
+    function validMedicine(uid, profileId, medicineId, data) {
+      return data.keys().hasOnly([
+          'name', 'dosage', 'notes', 'frequency', 'doseMinutes', 'days',
+          'startDay', 'endDay', 'quantity', 'lowSupplyWarning', 'status',
+          'photoUrl', 'photoPath', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll([
+          'name', 'frequency', 'doseMinutes', 'startDay', 'endDay',
+          'quantity', 'status'])
+        && medicineId.size() <= 64
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && optionalString(data, 'dosage', 100)
+        && optionalString(data, 'notes', 500)
+        && data.frequency in ['onceDaily', 'multipleDaily', 'specificDays', 'asNeeded']
+        && data.doseMinutes is list && data.doseMinutes.size() <= 24
+        && (!('days' in data) || (data.days is list && data.days.size() <= 7))
+        && isDay(data.startDay) && isDay(data.endDay)
+        && data.endDay >= data.startDay
+        // Quantity can dip just below zero if two devices log at once.
+        && data.quantity is int && data.quantity >= -100 && data.quantity <= 100000
+        && (!('lowSupplyWarning' in data) || data.lowSupplyWarning is bool)
+        && data.status in ['active', 'paused', 'archived', 'draft']
+        && optionalString(data, 'photoUrl', 2048)
+        && (!('photoPath' in data)
+            || (data.photoPath is string
+                && data.photoPath.matches('users/' + uid + '/profiles/' + profileId
+                    + '/medicines/' + medicineId + '/[^/]+')))
+        && data.updatedAt == request.time;
+    }
+
+    function validVisit(data) {
+      return data.keys().hasOnly([
+          'title', 'category', 'startsAt', 'doctor', 'clinic', 'address',
+          'phone', 'notes', 'reminders', 'departureAlerts', 'status',
+          'placeId', 'placeName', 'latitude', 'longitude',
+          'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['title', 'startsAt', 'status'])
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 120
+        && optionalString(data, 'category', 40)
+        && data.startsAt is timestamp
+        && optionalString(data, 'doctor', 100)
+        && optionalString(data, 'clinic', 100)
+        && optionalString(data, 'address', 200)
+        && optionalString(data, 'phone', 30)
+        && optionalString(data, 'notes', 1000)
+        && (!('reminders' in data) || (data.reminders is list && data.reminders.size() <= 4))
+        && (!('departureAlerts' in data) || data.departureAlerts is bool)
+        && data.status in ['scheduled', 'cancelled']
+        && optionalString(data, 'placeId', 300)
+        && optionalString(data, 'placeName', 200)
+        // A chosen place always comes with both coordinates.
+        && (('placeId' in data) == ('latitude' in data))
+        && (('latitude' in data) == ('longitude' in data))
+        && (!('latitude' in data)
+            || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90))
+        && (!('longitude' in data)
+            || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180))
+        && data.updatedAt == request.time;
+    }
+
+    function validDoseLog(logId, data) {
+      return data.keys().hasOnly(['medicineId', 'day', 'minutes', 'status', 'loggedAt'])
+        && data.medicineId is string && data.medicineId.size() > 0
+        && data.medicineId.size() <= 64
+        && isDay(data.day)
+        && data.minutes is int && data.minutes >= 0 && data.minutes < 1440
+        && logId == data.medicineId + '_' + data.day + '_' + string(data.minutes)
+        && data.status in ['taken', 'skipped']
+        && data.loggedAt == request.time;
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function optionalString(data, field, maxLength) {
+      return !(field in data)
+        || (data[field] is string && data[field].size() <= maxLength);
+    }
+
+    function createdAtUnchanged(data) {
+      return resource == null
+        ? (!('createdAt' in data) || data.createdAt == request.time)
+        : data.get('createdAt', null) == resource.data.get('createdAt', null);
+    }
+
+    // Pre-profiles personal fields may be kept as they were or removed (by
+    // the migration), but never written or changed.
+    function legacyKept(data, field) {
+      return !(field in data)
+        || (resource != null && field in resource.data && data[field] == resource.data[field]);
+    }
+
+    function validAccount(data) {
+      return data.keys().hasOnly([
+          'setupCompleted', 'activeProfileId', 'profilesMigratedAt',
+          'createdAt', 'updatedAt',
+          'profileFor', 'fullName', 'relationship', 'dateOfBirth',
+          'emergencyContactName', 'emergencyContactPhone',
+          'photoUrl', 'photoPath', 'profileCompleted'])
+        && data.updatedAt == request.time
+        && (!('setupCompleted' in data) || data.setupCompleted is bool)
+        && optionalString(data, 'activeProfileId', 64)
+        && (!('profilesMigratedAt' in data) || data.profilesMigratedAt is timestamp)
+        && legacyKept(data, 'profileFor') && legacyKept(data, 'fullName')
+        && legacyKept(data, 'relationship') && legacyKept(data, 'dateOfBirth')
+        && legacyKept(data, 'emergencyContactName') && legacyKept(data, 'emergencyContactPhone')
+        && legacyKept(data, 'photoUrl') && legacyKept(data, 'photoPath')
+        && legacyKept(data, 'profileCompleted');
+    }
+
+    function validProfile(uid, profileId, data) {
+      return data.keys().hasOnly([
+          'type', 'fullName', 'relationship', 'dateOfBirth',
+          'emergencyContactName', 'emergencyContactPhone',
+          'photoUrl', 'photoPath', 'createdAt', 'updatedAt'])
+        && data.type in ['self', 'parent', 'spouse', 'other']
+        // "self" is always and only the account holder.
+        && ((profileId == 'self') == (data.type == 'self'))
+        && profileId.size() <= 64
+        && data.fullName is string
+        && data.fullName.size() > 0 && data.fullName.size() <= 100
+        && data.updatedAt == request.time
+        && optionalString(data, 'relationship', 60)
+        && optionalString(data, 'emergencyContactName', 100)
+        && optionalString(data, 'emergencyContactPhone', 30)
+        && optionalString(data, 'photoUrl', 2048)
+        && (!('photoPath' in data)
+            || (data.photoPath is string
+                && (data.photoPath.matches('users/' + uid + '/profiles/' + profileId + '/[^/]+')
+                    // Photos migrated from before profiles existed.
+                    || data.photoPath.matches('users/' + uid + '/profile/[^/]+'))))
+        && (!('dateOfBirth' in data)
+            || (data.dateOfBirth is timestamp && data.dateOfBirth < request.time));
+    }
+  }
+}

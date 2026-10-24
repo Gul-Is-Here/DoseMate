@@ -7,6 +7,58 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:1074770041543:android:0f6f81016b0edcfa1bbce2",
+        "android_client_info": {
+          "package_name": "com.dosemate.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1074770041543-49o3imcpes0ejrlr24nktb63essq0k27.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dosemate.app",
+            "certificate_hash": "98d59e0131a345a1a77fbeb24f033bdd2333addf"
+          }
+        },
+        {
+          "client_id": "1074770041543-timo7h7pu5hisar219j69btrlh1v1eeb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dosemate.app",
+            "certificate_hash": "0eb743d24793dd017063912957f888516b56135d"
+          }
+        },
+        {
+          "client_id": "1074770041543-f3n59896h0td00eacuiheme27i56agrg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDt97YA38t5uMXMuZfuHqeaAfA8D7oYF74"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1074770041543-f3n59896h0td00eacuiheme27i56agrg.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1074770041543-0a8kaankuhbbndakea3s417scbr3dmbd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.dosemate"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:1074770041543:android:1f7af78744b126fc1bbce2",
         "android_client_info": {
           "package_name": "com.example.dosemate"

@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>1074770041543-0a8kaankuhbbndakea3s417scbr3dmbd.apps.googleusercontent.com</string>
+	<string>1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.1074770041543-0a8kaankuhbbndakea3s417scbr3dmbd</string>
+	<string>com.googleusercontent.apps.1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk</string>
 	<key>ANDROID_CLIENT_ID</key>
-	<string>1074770041543-qeo41nh5m6ens9897h4s7hb4ln24sn36.apps.googleusercontent.com</string>
+	<string>1074770041543-49o3imcpes0ejrlr24nktb63essq0k27.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyBRpCgsCauNvvJ1ekv0ReelGJVKe-MOLUA</string>
 	<key>GCM_SENDER_ID</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.dosemate</string>
+	<string>com.dosemate.app</string>
 	<key>PROJECT_ID</key>
 	<string>dosemate-70150</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1074770041543:ios:5f774d0842b6e69b1bbce2</string>
+	<string>1:1074770041543:ios:faa5479ac394f65a1bbce2</string>
 </dict>
 </plist>

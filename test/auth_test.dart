@@ -3,9 +3,14 @@ import 'dart:async';
 import 'package:dosemate/app/routes/app_routes.dart';
 import 'package:dosemate/core/utils/validators.dart';
 import 'package:dosemate/data/repositories/auth_repository.dart';
+import 'package:dosemate/data/repositories/profile_repository.dart';
+import 'package:dosemate/data/services/profile_service.dart';
 import 'package:dosemate/data/services/auth_service.dart';
+import 'package:dosemate/data/services/google_account_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/fake_profiles.dart';
 
 class FakeUserInfo implements UserInfo {
   FakeUserInfo(this.providerId);
@@ -22,6 +27,9 @@ class FakeUser implements User {
     : providerData = [FakeUserInfo(provider)];
 
   @override
+  String get uid => 'uid-1';
+
+  @override
   bool emailVerified;
 
   @override
@@ -32,6 +40,9 @@ class FakeUser implements User {
 
   @override
   String? get email => 'a@b.co';
+
+  @override
+  String? get displayName => name;
 
   @override
   Future<void> updateDisplayName(String? displayName) async =>
@@ -55,7 +66,27 @@ class FakeCredential implements UserCredential {
   final User? user;
 
   @override
+  AdditionalUserInfo? get additionalUserInfo => null;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakePicker implements GoogleAccountPicker {
+  Exception? nextError;
+  int signOuts = 0;
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Future<String> idToken() async {
+    if (nextError case final e?) throw e;
+    return 'id-token';
+  }
+
+  @override
+  Future<void> signOut() async => signOuts++;
 }
 
 class FakeAuth implements FirebaseAuth {
@@ -95,6 +126,14 @@ class FakeAuth implements FirebaseAuth {
   Future<UserCredential> signInWithProvider(AuthProvider provider) =>
       _complete(FakeUser(emailVerified: true, provider: 'google.com'));
 
+  final credentials = <AuthCredential>[];
+
+  @override
+  Future<UserCredential> signInWithCredential(AuthCredential credential) {
+    credentials.add(credential);
+    return _complete(FakeUser(emailVerified: true, provider: 'google.com'));
+  }
+
   @override
   Future<void> sendPasswordResetEmail({
     required String email,
@@ -117,10 +156,14 @@ class FakeAuth implements FirebaseAuth {
 void main() {
   late FakeAuth auth;
   late AuthRepository repo;
+  late FakeProfiles profiles;
+  late FakePicker picker;
 
   setUp(() {
     auth = FakeAuth();
-    repo = AuthRepository(auth);
+    picker = FakePicker();
+    repo = AuthRepository(auth, googlePicker: picker);
+    profiles = FakeProfiles();
   });
 
   group('AuthRepository', () {
@@ -176,14 +219,31 @@ void main() {
       },
     );
 
-    test('Google sign in succeeds and needs no email verification', () async {
-      await repo.signInWithGoogle();
-      expect(AuthRepository.needsEmailVerification(auth.signedIn!), isFalse);
+    test(
+      'Google sign in uses the native picker token, not a browser',
+      () async {
+        expect(await repo.signInWithGoogle(), isFalse);
+        expect(auth.credentials.single.providerId, 'google.com');
+        expect(AuthRepository.needsEmailVerification(auth.signedIn!), isFalse);
+      },
+    );
+
+    test('closing the Google picker is a cancellation, not an error', () async {
+      picker.nextError = const GooglePickerCancelled();
+      await expectLater(repo.signInWithGoogle(), throwsA(isA<AuthCancelled>()));
+      expect(auth.signedIn, isNull);
     });
 
-    test('closing the Google sheet is a cancellation, not an error', () async {
-      auth.nextError = FirebaseAuthException(code: 'web-context-canceled');
-      await expectLater(repo.signInWithGoogle(), throwsA(isA<AuthCancelled>()));
+    test('picker failures show a readable message', () async {
+      picker.nextError = const GooglePickerFailure('unknownError');
+      await expectLater(repo.signInWithGoogle(), throwsA(isA<AuthFailure>()));
+    });
+
+    test('sign out also forgets the Google account', () async {
+      await repo.signInWithGoogle();
+      await repo.signOut();
+      expect(auth.signedIn, isNull);
+      expect(picker.signOuts, 1);
     });
 
     test('password reset does not reveal whether the account exists', () async {
@@ -196,30 +256,88 @@ void main() {
 
   group('AuthService', () {
     test('signed-out start routes to onboarding', () async {
-      final service = await AuthService(repo).init();
+      final service = await AuthService(repo, ProfileService(profiles)).init();
       expect(service.initialRoute, AppRoutes.onboarding);
     });
 
     test('restored verified session routes to home', () async {
       auth.signedIn = FakeUser(emailVerified: true, provider: 'password');
-      final service = await AuthService(repo).init();
+      final service = await AuthService(repo, ProfileService(profiles)).init();
       expect(service.initialRoute, AppRoutes.home);
     });
 
     test('restored unverified email session routes to verification', () async {
       auth.signedIn = FakeUser(emailVerified: false, provider: 'password');
-      final service = await AuthService(repo).init();
+      final service = await AuthService(repo, ProfileService(profiles)).init();
       expect(service.initialRoute, AppRoutes.verifyEmail);
     });
 
     test('verification picks up after reload', () async {
       final user = FakeUser(emailVerified: false, provider: 'password');
       auth.signedIn = user;
-      final service = await AuthService(repo).init();
+      final service = await AuthService(repo, ProfileService(profiles)).init();
       user.emailVerified = true;
       expect(await repo.reloadEmailVerified(), isTrue);
       service.refreshUser();
       expect(service.routeForUser, AppRoutes.home);
+    });
+  });
+
+  group('Routing after sign in', () {
+    Future<AuthService> signedIn({
+      bool verified = true,
+      String provider = 'password',
+    }) {
+      auth.signedIn = FakeUser(emailVerified: verified, provider: provider);
+      return AuthService(repo, ProfileService(profiles)).init();
+    }
+
+    test(
+      'email login with an incomplete profile shows Profile Setup',
+      () async {
+        final service = await signedIn();
+        expect(await service.routeAfterSignIn(), AppRoutes.profileSetup);
+      },
+    );
+
+    test(
+      'Google login with an incomplete profile shows Profile Setup',
+      () async {
+        final service = await signedIn(provider: 'google.com');
+        expect(await service.routeAfterSignIn(), AppRoutes.profileSetup);
+      },
+    );
+
+    test('a completed profile goes straight to Home', () async {
+      profiles.completeSetup('uid-1');
+      for (final provider in ['password', 'google.com']) {
+        final service = await signedIn(provider: provider);
+        expect(await service.routeAfterSignIn(), AppRoutes.home);
+      }
+    });
+
+    test('new accounts always see Profile Setup', () async {
+      final service = await signedIn(verified: false);
+      expect(
+        await service.routeAfterSignIn(isNewAccount: true),
+        AppRoutes.profileSetup,
+      );
+    });
+
+    test('unverified email login verifies before the profile', () async {
+      final service = await signedIn(verified: false);
+      expect(await service.routeAfterSignIn(), AppRoutes.verifyEmail);
+    });
+
+    test('a profile read failure falls back to Home', () async {
+      profiles.readFailure = const ProfileFailure('offline');
+      final service = await signedIn();
+      expect(await service.routeAfterSignIn(), AppRoutes.home);
+    });
+
+    test('restarting with a saved session skips the profile check', () async {
+      final service = await signedIn();
+      expect(service.initialRoute, AppRoutes.home);
     });
   });
 
@@ -228,6 +346,14 @@ void main() {
       expect(Validators.email(''), isNotNull);
       expect(Validators.email('sarah@familycare'), isNotNull);
       expect(Validators.email(' sarah@familycare.org '), isNull);
+    });
+
+    test('optional phone', () {
+      expect(Validators.optionalPhone(''), isNull);
+      expect(Validators.optionalPhone('(555) 432-8921'), isNull);
+      expect(Validators.optionalPhone('+92 300 1234567'), isNull);
+      expect(Validators.optionalPhone('12ab'), isNotNull);
+      expect(Validators.optionalPhone('123'), isNotNull);
     });
 
     test('new password and confirmation', () {

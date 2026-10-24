@@ -35,15 +35,15 @@ class LoginViewModel extends GetxController {
     await _run(isLoading, () async {
       await _auth.repository.signInWithEmail(email: email, password: password);
       passwordController.clear();
-      _auth.goToRouteForUser();
+      await _auth.completeSignIn();
     });
   }
 
   Future<void> signInWithGoogle() async {
     if (_busy) return;
     await _run(isGoogleLoading, () async {
-      await _auth.repository.signInWithGoogle();
-      _auth.goToRouteForUser();
+      final isNewUser = await _auth.repository.signInWithGoogle();
+      await _auth.completeSignIn(isNewAccount: isNewUser);
     });
   }
 
