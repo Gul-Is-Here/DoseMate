@@ -3,11 +3,11 @@ import 'dart:io';
 
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../widgets/confirm_dialog.dart';
+import '../../widgets/permission_dialog.dart';
 import 'alarm_actions.dart';
 
 /// Notification permission as the app sees it.
@@ -36,6 +36,7 @@ class NotificationService extends GetxService with WidgetsBindingObserver {
   // so the sounds came with new channels and these are removed.
   static const _oldChannels = ['alerts', 'reminders', 'local_alarms'];
   static const _askedKey = 'notifications.asked';
+  static const _exactAskedKey = 'notifications.exactAsked';
 
   final AwesomeNotifications _plugin;
 
@@ -133,8 +134,8 @@ class NotificationService extends GetxService with WidgetsBindingObserver {
           : NotifyPermission.denied;
       final wasExact = exactAlarms.value;
       if (Platform.isAndroid) {
+        // App-wide (AlarmManager.canScheduleExactAlarms), not per channel.
         final has = await _plugin.checkPermissionList(
-          channelKey: alarmsChannel,
           permissions: const [NotificationPermission.PreciseAlarms],
         );
         exactAlarms.value = has.contains(NotificationPermission.PreciseAlarms);
@@ -156,21 +157,30 @@ class NotificationService extends GetxService with WidgetsBindingObserver {
     _asking = true;
     try {
       await refresh();
-      if (permission.value != NotifyPermission.denied) return;
       final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool(_askedKey) ?? false) return;
-      await prefs.setBool(_askedKey, true);
-      final ok = await confirmAction(
-        title: 'Turn on dose alerts?',
-        message:
-            'DoseMate can tell you when a dose hasn\'t been logged and when '
-            'a medicine is running low. You can change this anytime in '
-            'Settings.',
-        confirmLabel: 'Continue',
-        cancelLabel: 'Not now',
-        destructive: false,
-      );
-      if (ok) await _request();
+      if (permission.value == NotifyPermission.denied &&
+          !(prefs.getBool(_askedKey) ?? false)) {
+        await prefs.setBool(_askedKey, true);
+        final ok = await askPermission(
+          icon: Icons.notifications_active_outlined,
+          title: 'Turn on reminders',
+          message: 'Allow notifications so DoseMate can remind you on time.',
+          points: const [
+            PermissionPoint(Icons.medication_outlined, 'Rings at each dose'),
+            PermissionPoint(
+              Icons.event_outlined,
+              'Reminds you of appointments',
+            ),
+            PermissionPoint(
+              Icons.inventory_2_outlined,
+              'Warns when a medicine is running low',
+            ),
+          ],
+          allowLabel: 'Allow notifications',
+        );
+        if (ok) await _request();
+      }
+      await _askExactOnce(prefs);
     } catch (e) {
       _log('ask', e);
     } finally {
@@ -200,15 +210,46 @@ class NotificationService extends GetxService with WidgetsBindingObserver {
     await refresh();
   }
 
+  /// Reminders are allowed but exact alarms aren't (Android 12+; off by
+  /// default from Android 14): a locked, idle phone may then hold them
+  /// back. Explained once per install; Home keeps a banner until it's
+  /// allowed.
+  bool get remindersMayBeLate =>
+      ready &&
+      permission.value == NotifyPermission.granted &&
+      exactAlarms.value == false;
+
+  Future<void> _askExactOnce(SharedPreferences prefs) async {
+    if (!remindersMayBeLate || (prefs.getBool(_exactAskedKey) ?? false)) {
+      return;
+    }
+    await prefs.setBool(_exactAskedKey, true);
+    await requestExactAlarms();
+  }
+
+  /// Explains exact alarms, then opens the system page to allow them.
+  Future<void> requestExactAlarms() async {
+    final ok = await askPermission(
+      icon: Icons.alarm_on_outlined,
+      title: 'Ring on time when locked',
+      message:
+          'Android can delay reminders while your phone is locked. Allow '
+          'DoseMate to set alarms so each dose rings right on time.',
+      switchLabel: 'Allow setting alarms and reminders',
+      allowLabel: 'Open settings',
+    );
+    if (ok) await enableExactAlarms();
+  }
+
   /// Exact alarms are separate from notification permission: Android
-  /// grants them on a system page, never a prompt.
+  /// grants them on a system page, never a prompt. (Requesting
+  /// PreciseAlarms through requestPermissionToSendNotifications asks for
+  /// it as a runtime permission, which Android ignores: "No requestable
+  /// permission in the request".) Coming back re-reads the status.
   Future<void> enableExactAlarms() async {
     if (!ready || !Platform.isAndroid) return;
     try {
-      await _plugin.requestPermissionToSendNotifications(
-        channelKey: alarmsChannel,
-        permissions: const [NotificationPermission.PreciseAlarms],
-      );
+      await _plugin.showAlarmPage();
     } catch (e) {
       _log('exact', e);
     }

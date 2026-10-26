@@ -52,30 +52,30 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDt97YA38t5uMXMuZfuHqeaAfA8D7oYF74',
-    appId: '1:1074770041543:android:0f6f81016b0edcfa1bbce2',
+    appId: '1:1074770041543:android:fbb97622dbcabfdb1bbce2',
     messagingSenderId: '1074770041543',
     projectId: 'dosemate-70150',
     storageBucket: 'dosemate-70150.firebasestorage.app',
   );
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBRpCgsCauNvvJ1ekv0ReelGJVKe-MOLUA',
-    appId: '1:1074770041543:ios:faa5479ac394f65a1bbce2',
+    appId: '1:1074770041543:ios:5892f57b971ae8261bbce2',
     messagingSenderId: '1074770041543',
     projectId: 'dosemate-70150',
     storageBucket: 'dosemate-70150.firebasestorage.app',
-    androidClientId: '1074770041543-qeo41nh5m6ens9897h4s7hb4ln24sn36.apps.googleusercontent.com',
-    iosClientId: '1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk.apps.googleusercontent.com',
-    iosBundleId: 'com.dosemate.app',
+    androidClientId: '1074770041543-cijc9f2nalo9bn4d6d4st7r9gb03vmpj.apps.googleusercontent.com',
+    iosClientId: '1074770041543-gdc1i8ubmhcom1881qgm0dvip4nr78ef.apps.googleusercontent.com',
+    iosBundleId: 'com.dosemate.mobile',
   );
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyBRpCgsCauNvvJ1ekv0ReelGJVKe-MOLUA',
-    appId: '1:1074770041543:ios:faa5479ac394f65a1bbce2',
+    appId: '1:1074770041543:ios:5892f57b971ae8261bbce2',
     messagingSenderId: '1074770041543',
     projectId: 'dosemate-70150',
     storageBucket: 'dosemate-70150.firebasestorage.app',
-    androidClientId: '1074770041543-qeo41nh5m6ens9897h4s7hb4ln24sn36.apps.googleusercontent.com',
-    iosClientId: '1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk.apps.googleusercontent.com',
-    iosBundleId: 'com.dosemate.app',
+    androidClientId: '1074770041543-cijc9f2nalo9bn4d6d4st7r9gb03vmpj.apps.googleusercontent.com',
+    iosClientId: '1074770041543-gdc1i8ubmhcom1881qgm0dvip4nr78ef.apps.googleusercontent.com',
+    iosBundleId: 'com.dosemate.mobile',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

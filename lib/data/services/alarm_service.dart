@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
@@ -28,7 +29,7 @@ class AlarmPlan {
   final String title;
   final String body;
 
-  int get id => AlarmActions.idFor(payload.key);
+  int get id => payload.id;
 }
 
 /// Keeps this device's local alarms in step with every profile the
@@ -49,13 +50,20 @@ class AlarmService extends GetxService {
     this._repository,
     this._notify, {
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+    bool? followUps,
+  }) : _clock = clock ?? DateTime.now,
+       followUps = followUps ?? (!kIsWeb && Platform.isAndroid);
 
   final AuthService _auth;
   final ProfileService _profiles;
   final CareRepository _repository;
   final NotificationService _notify;
   final DateTime Function() _clock;
+
+  /// Whether an unanswered alarm leaves a "still due" follow-up. Android
+  /// only: there the alarm is removed once it stops ringing, while iOS
+  /// keeps every notification in Notification Center anyway.
+  final bool followUps;
 
   static const horizon = Duration(hours: 48);
 
@@ -183,7 +191,11 @@ class AlarmService extends GetxService {
         final day = CareDates.addDays(today, d);
         for (final m in _medicines[pid] ?? const <Medicine>[]) {
           for (final o in m.occurrencesOn(day)) {
-            if (!o.at.isAfter(now) || o.at.isAfter(until)) continue;
+            // Past alarms still count while their follow-up is to come.
+            final last = followUps
+                ? o.at.add(AlarmActions.followUpAfter)
+                : o.at;
+            if (!last.isAfter(now) || o.at.isAfter(until)) continue;
             if (logs.containsKey(o.logId)) continue;
             (groups[o.at] ??= []).add(o);
           }
@@ -205,7 +217,9 @@ class AlarmService extends GetxService {
               o.medicine.dosage,
             ].where((s) => s.isNotEmpty).join(' — '),
         ].join('\n');
-        plans.add(
+        _add(
+          plans,
+          now,
           AlarmPlan(
             at: at,
             title: title,
@@ -230,7 +244,8 @@ class AlarmService extends GetxService {
           final offset = _visitOffsets[r];
           if (offset == null) continue;
           final at = v.startsAt.subtract(offset);
-          if (!at.isAfter(now) || at.isAfter(until)) continue;
+          final last = followUps ? at.add(AlarmActions.followUpAfter) : at;
+          if (!last.isAfter(now) || at.isAfter(until)) continue;
           final key =
               'alarm:visit:$pid:${v.id}:${offset.inMinutes}:'
               '${v.startsAt.millisecondsSinceEpoch}';
@@ -241,7 +256,9 @@ class AlarmService extends GetxService {
             if (v.who.isNotEmpty) v.who,
             if (v.address.isNotEmpty) v.address,
           ].join('\n');
-          plans.add(
+          _add(
+            plans,
+            now,
             AlarmPlan(
               at: at,
               title: '${v.title} — $r',
@@ -260,7 +277,40 @@ class AlarmService extends GetxService {
       }
     }
     plans.sort((a, b) => a.at.compareTo(b.at));
-    return plans.take(maxAlarms).toList();
+    // Follow-ups come only on Android, where the limit is far higher.
+    return plans.take(followUps ? maxAlarms * 2 : maxAlarms).toList();
+  }
+
+  /// Adds [alarm] while it's still to ring, and its follow-up (when
+  /// [followUps]) while that's still to come.
+  void _add(List<AlarmPlan> plans, DateTime now, AlarmPlan alarm) {
+    if (alarm.at.isAfter(now)) plans.add(alarm);
+    if (!followUps) return;
+    final at = alarm.at.add(AlarmActions.followUpAfter);
+    if (!at.isAfter(now)) return;
+    final p = alarm.payload;
+    final dose = p.kind == AlarmPayload.dose;
+    plans.add(
+      AlarmPlan(
+        at: at,
+        title: dose
+            ? 'Still due: ${alarm.title.replaceFirst('Time for ', '')}'
+            : 'Reminder: ${alarm.title}',
+        body: dose ? '${alarm.body}\nNot logged yet' : alarm.body,
+        payload: AlarmPayload(
+          kind: p.kind,
+          uid: p.uid,
+          pid: p.pid,
+          key: p.key,
+          day: p.day,
+          minutes: p.minutes,
+          medicineIds: p.medicineIds,
+          visitId: p.visitId,
+          sig: p.sig,
+          followUp: true,
+        ),
+      ),
+    );
   }
 
   Future<void> _reconcileNow() async {
@@ -283,11 +333,25 @@ class AlarmService extends GetxService {
     if (!_notify.ready) return;
     final plugin = _notify.plugin;
     final granted = _notify.permission.value == NotifyPermission.granted;
-    final wanted = granted ? plan() : const <AlarmPlan>[];
-    final byId = {for (final p in wanted) p.id: p};
     try {
       // Only pending alarms: one that's ringing now is left to finish.
       final scheduled = await plugin.listScheduledNotifications();
+      // A snoozed dose already rings again later: no follow-up for it.
+      final snoozedLogs = {
+        for (final n in scheduled)
+          if (n.content?.payload case final payload?
+              when payload['snooze'] == '1')
+            ...AlarmPayload.from(payload).logIds,
+      };
+      final wanted = granted
+          ? [
+              for (final p in plan())
+                if (!p.payload.followUp ||
+                    !p.payload.logIds.any(snoozedLogs.contains))
+                  p,
+            ]
+          : const <AlarmPlan>[];
+      final byId = {for (final p in wanted) p.id: p};
       // Alarms set on an earlier alarm channel are replaced on this one.
       for (final n in scheduled) {
         final c = n.content;
@@ -298,6 +362,9 @@ class AlarmService extends GetxService {
       final pending = scheduled
           .where((n) => n.content?.channelKey == AlarmActions.channel)
           .toList();
+      // Set before exact alarms were allowed (or after they were taken
+      // away): set again, or they'd keep Android's late, inexact window.
+      final exact = _notify.exactAlarms.value ?? false;
       final have = <int, String>{};
       for (final n in pending) {
         final c = n.content!;
@@ -311,13 +378,13 @@ class AlarmService extends GetxService {
           }
           continue;
         }
-        if (byId[id]?.payload.sig != payload['sig']) {
+        if (byId[id]?.payload.sig != payload['sig'] ||
+            (n.schedule?.preciseAlarm ?? false) != exact) {
           await plugin.cancel(id);
         } else {
           have[id] = payload['sig'] ?? '';
         }
       }
-      final exact = _notify.exactAlarms.value ?? false;
       for (final p in wanted) {
         if (have.containsKey(p.id)) continue;
         await plugin.createNotification(
@@ -340,6 +407,7 @@ class AlarmService extends GetxService {
       // elsewhere): stop it. One with a dose still unlogged keeps ringing.
       for (final key in loggedGroups()) {
         await plugin.dismiss(AlarmActions.idFor(key));
+        await plugin.dismiss(AlarmActions.followUpIdFor(key));
       }
     } catch (e) {
       // Not scheduled now; the next change or hourly refresh tries again.
@@ -403,6 +471,7 @@ class AlarmService extends GetxService {
     }
     try {
       await _notify.plugin.dismiss(AlarmActions.idFor(group));
+      await _notify.plugin.cancel(AlarmActions.followUpIdFor(group));
       await _notify.plugin.createNotification(
         content: AlarmActions.content(
           payload: payload,
@@ -424,37 +493,6 @@ class AlarmService extends GetxService {
       );
     } catch (e) {
       _log('snooze', e);
-    }
-  }
-
-  /// A test alarm a minute from now (Dismiss and Snooze only; logs
-  /// nothing), for checking sound, lock screen and buttons on a device.
-  Future<bool> testAlarm() async {
-    final uid = _uid;
-    if (uid == null || !_notify.ready) return false;
-    final payload = AlarmPayload(
-      kind: AlarmPayload.visit,
-      uid: uid,
-      pid: UserProfile.selfId,
-      key: 'alarm:test',
-    );
-    try {
-      return await _notify.plugin.createNotification(
-        content: AlarmActions.content(
-          payload: payload,
-          title: 'DoseMate test alarm',
-          body: 'This is how reminders ring on this device.',
-        ),
-        actionButtons: AlarmActions.buttons(payload),
-        schedule: NotificationCalendar.fromDate(
-          date: _clock().add(const Duration(minutes: 1)),
-          allowWhileIdle: true,
-          preciseAlarm: _notify.exactAlarms.value ?? false,
-        ),
-      );
-    } catch (e) {
-      _log('test', e);
-      return false;
     }
   }
 

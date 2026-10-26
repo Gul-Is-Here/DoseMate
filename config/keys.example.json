@@ -1,5 +1,5 @@
 {
-  "GOOGLE_PLACES_API_KEY_ANDROID": "Places key restricted to com.dosemate.app + signing SHA-1s",
-  "GOOGLE_PLACES_API_KEY_IOS": "Places key restricted to the com.dosemate.app bundle id",
+  "GOOGLE_PLACES_API_KEY_ANDROID": "Places key restricted to com.dosemate.mobile + signing SHA-1s",
+  "GOOGLE_PLACES_API_KEY_IOS": "Places key restricted to the com.dosemate.mobile bundle id",
   "GOOGLE_ANDROID_CERT_SHA1": "SHA-1 of this build's signing certificate, hex without colons"
 }

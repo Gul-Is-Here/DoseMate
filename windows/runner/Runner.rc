@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "DoseMate" "\0"
-            VALUE "FileDescription", "dosemate" "\0"
+            VALUE "FileDescription", "DoseMate" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "dosemate" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 DoseMate. All rights reserved." "\0"
             VALUE "OriginalFilename", "dosemate.exe" "\0"
-            VALUE "ProductName", "dosemate" "\0"
+            VALUE "ProductName", "DoseMate" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

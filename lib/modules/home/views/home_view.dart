@@ -40,6 +40,19 @@ class HomeView extends GetView<HomeViewModel> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(kMargin, 8, kMargin, 32),
               children: [
+                Obx(() {
+                  final issue = controller.reminderIssue;
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: issue == null
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            key: ValueKey(issue),
+                            padding: const EdgeInsets.only(bottom: kSpaceMd),
+                            child: _ReminderBanner(issue: issue),
+                          ),
+                  );
+                }),
                 const Reveal(child: _TodayCard()),
                 const SizedBox(height: kSpaceMd),
                 Obx(
@@ -748,6 +761,92 @@ class _RefillBanner extends GetView<HomeViewModel> {
           IconButton(
             tooltip: 'Dismiss alert',
             onPressed: () => controller.dismissRefill(medicine),
+            icon: Icon(Icons.close, size: 18, color: fg),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Reminders that won't reach this phone, or won't ring on time while
+/// it's locked, with the fix one tap away.
+class _ReminderBanner extends GetView<HomeViewModel> {
+  const _ReminderBanner({required this.issue});
+
+  final ReminderIssue issue;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = AppColors.error;
+    final bg = AppColors.errorContainer;
+    final off = issue == ReminderIssue.off;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: fg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              off ? Icons.notifications_off_outlined : Icons.alarm_off,
+              size: 20,
+              color: bg,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  off ? 'Reminders are off' : 'Reminders may ring late',
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  off
+                      ? 'This phone won’t ring for doses or visits.'
+                      : 'Allow alarms so they ring on time when locked.',
+                  style: AppTextStyles.bodySm.copyWith(color: fg, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          PressScale(
+            child: DmPill(
+              key: const ValueKey('home-fix-reminders'),
+              tooltip: off ? 'Turn on reminders' : 'Allow exact alarms',
+              onTap: controller.fixReminders,
+              color: fg,
+              minHeight: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              children: [
+                Text(
+                  off ? 'Turn on' : 'Allow',
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: bg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Dismiss',
+            onPressed: controller.dismissReminderBanner,
             icon: Icon(Icons.close, size: 18, color: fg),
           ),
         ],

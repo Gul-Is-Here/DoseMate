@@ -392,7 +392,7 @@ class _LocationCard extends GetView<AddVisitViewModel> {
               ),
               const SizedBox(width: 8),
               Tooltip(
-                message: 'Test Call Clinic',
+                message: 'Call clinic',
                 child: Material(
                   color: AppColors.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(_radius),

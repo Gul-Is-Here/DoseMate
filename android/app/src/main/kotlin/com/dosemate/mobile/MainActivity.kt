@@ -1,4 +1,4 @@
-package com.dosemate.app
+package com.dosemate.mobile
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

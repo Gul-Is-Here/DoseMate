@@ -4,14 +4,14 @@
       "android": {
         "default": {
           "projectId": "dosemate-70150",
-          "appId": "1:1074770041543:android:0f6f81016b0edcfa1bbce2",
+          "appId": "1:1074770041543:android:fbb97622dbcabfdb1bbce2",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
           "projectId": "dosemate-70150",
-          "appId": "1:1074770041543:ios:faa5479ac394f65a1bbce2",
+          "appId": "1:1074770041543:ios:5892f57b971ae8261bbce2",
           "uploadDebugSymbols": false,
           "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
@@ -19,7 +19,7 @@
       "macos": {
         "default": {
           "projectId": "dosemate-70150",
-          "appId": "1:1074770041543:ios:faa5479ac394f65a1bbce2",
+          "appId": "1:1074770041543:ios:5892f57b971ae8261bbce2",
           "uploadDebugSymbols": false,
           "fileOutput": "macos/Runner/GoogleService-Info.plist"
         }
@@ -28,9 +28,9 @@
         "lib/firebase_options.dart": {
           "projectId": "dosemate-70150",
           "configurations": {
-            "android": "1:1074770041543:android:0f6f81016b0edcfa1bbce2",
-            "ios": "1:1074770041543:ios:faa5479ac394f65a1bbce2",
-            "macos": "1:1074770041543:ios:faa5479ac394f65a1bbce2",
+            "android": "1:1074770041543:android:fbb97622dbcabfdb1bbce2",
+            "ios": "1:1074770041543:ios:5892f57b971ae8261bbce2",
+            "macos": "1:1074770041543:ios:5892f57b971ae8261bbce2",
             "web": "1:1074770041543:web:92f875a3c5dc45fd1bbce2",
             "windows": "1:1074770041543:web:ec2dbc1a349c03681bbce2"
           }

@@ -5,9 +5,7 @@ import 'package:get/get.dart';
 
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_text_styles.dart';
-import '../data/services/alarm_service.dart';
 import '../data/services/notification_service.dart';
-import 'app_snackbar.dart';
 
 /// Settings for this device's notifications: their status, a way to turn
 /// them on, and (Android) exact alarms for on-time reminders.
@@ -89,46 +87,10 @@ class NotificationSettingsSheet extends StatelessWidget {
                 if (!exact) ...[
                   const SizedBox(height: 12),
                   OutlinedButton(
-                    onPressed: _notify.enableExactAlarms,
+                    onPressed: _notify.requestExactAlarms,
                     child: const Text('Allow exact alarms'),
                   ),
                 ],
-              ],
-              if (on) ...[
-                const SizedBox(height: 16),
-                _AsyncTextButton(
-                  label: 'Send a test notification',
-                  onPressed: () async {
-                    final shown = await _notify.show(
-                      key: 'test',
-                      title: 'DoseMate test',
-                      body: 'Notifications are working on this device.',
-                    );
-                    showSnack(
-                      shown ? 'Test sent' : 'Not sent',
-                      shown
-                          ? 'Check your notifications.'
-                          : 'The test notification couldn\'t be created. '
-                                'Try again, or check DoseMate in system '
-                                'settings.',
-                    );
-                  },
-                ),
-                _AsyncTextButton(
-                  label: 'Test alarm in 1 minute',
-                  onPressed: () async {
-                    final ok =
-                        Get.isRegistered<AlarmService>() &&
-                        await Get.find<AlarmService>().testAlarm();
-                    showSnack(
-                      ok ? 'Test alarm set' : 'Not set',
-                      ok
-                          ? 'It rings in about a minute. Try it locked.'
-                          : 'The test alarm couldn\'t be scheduled. Try '
-                                'again in a moment.',
-                    );
-                  },
-                ),
               ],
             ],
           );
@@ -171,49 +133,6 @@ class _Status extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// A text button that shows it's working and ignores repeated taps until
-/// [onPressed] finishes.
-class _AsyncTextButton extends StatefulWidget {
-  const _AsyncTextButton({required this.label, required this.onPressed});
-
-  final String label;
-  final Future<void> Function() onPressed;
-
-  @override
-  State<_AsyncTextButton> createState() => _AsyncTextButtonState();
-}
-
-class _AsyncTextButtonState extends State<_AsyncTextButton> {
-  bool _busy = false;
-
-  Future<void> _run() async {
-    setState(() => _busy = true);
-    try {
-      await widget.onPressed();
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: _busy ? null : _run,
-      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-      child: _busy
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                semanticsLabel: 'Working',
-              ),
-            )
-          : Text(widget.label),
     );
   }
 }

@@ -709,8 +709,7 @@ class _PreferencesBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Turn alerts on, allow exact alarm times, or try a test '
-                  'alarm.',
+                  'Turn alerts on and allow exact alarm times.',
                   style: AppTextStyles.bodySm.copyWith(
                     color: AppColors.onSurfaceVariant,
                   ),

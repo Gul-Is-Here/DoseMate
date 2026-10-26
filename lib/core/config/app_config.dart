@@ -33,7 +33,7 @@ abstract class AppConfig {
     'GOOGLE_ANDROID_CERT_SHA1',
   );
 
-  static const appId = 'com.dosemate.app';
+  static const appId = 'com.dosemate.mobile';
 
   /// The public privacy policy (Firebase Hosting, hosting/privacy/).
   static final privacyPolicyUrl = Uri.https(
@@ -46,5 +46,5 @@ abstract class AppConfig {
   static const googleWebClientId =
       '1074770041543-f3n59896h0td00eacuiheme27i56agrg.apps.googleusercontent.com';
   static const googleIosClientId =
-      '1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk.apps.googleusercontent.com';
+      '1074770041543-gdc1i8ubmhcom1881qgm0dvip4nr78ef.apps.googleusercontent.com';
 }

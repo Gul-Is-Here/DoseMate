@@ -1,3 +1,4 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:dosemate/data/models/medicine.dart';
 import 'package:dosemate/data/models/user_profile.dart';
 import 'package:dosemate/data/models/visit.dart';
@@ -21,7 +22,10 @@ void main() {
   late AlarmService alarms;
   var now = fixedNow(); // Sat 24 Oct 2026, 2:00 PM
 
-  Future<void> start() async {
+  Future<void> start({
+    bool followUps = false,
+    NotificationService? notify,
+  }) async {
     TestWidgetsFlutterBinding.ensureInitialized();
     Get.testMode = true;
     final store = FakeProfiles()
@@ -51,8 +55,9 @@ void main() {
       auth,
       profiles,
       care,
-      NotificationService(),
+      notify ?? NotificationService(),
       clock: () => now,
+      followUps: followUps,
     ).init();
     await Future<void>.delayed(Duration.zero);
   }
@@ -253,4 +258,173 @@ void main() {
       now.add(CareService.snoozeFor),
     );
   });
+
+  group('Android follow-ups for unanswered alarms', () {
+    Future<void> android() async {
+      alarms.onClose();
+      Get.reset();
+      await start(followUps: true);
+    }
+
+    const eightPm = 'alarm:dose:self:2026-10-24_1200';
+
+    test('each alarm leaves a quiet "still due" reminder once it stops '
+        'ringing, with its own id', () async {
+      await android();
+      final plans = alarms.plan().where((p) => p.payload.key == eightPm);
+      final alarm = plans.singleWhere((p) => !p.payload.followUp);
+      final late = plans.singleWhere((p) => p.payload.followUp);
+      expect(late.at, alarm.at.add(AlarmActions.followUpAfter));
+      expect(AlarmActions.followUpAfter, greaterThan(AlarmActions.ringFor));
+      expect(late.title, 'Still due: Amoxicillin');
+      expect(late.body, endsWith('Not logged yet'));
+      expect(late.id, AlarmActions.followUpIdFor(eightPm));
+      expect(late.id, isNot(alarm.id));
+      expect(late.id, isNot(AlarmActions.snoozeIdFor(eightPm)));
+      // It logs the same doses from its buttons.
+      expect(late.payload.logIds, alarm.payload.logIds);
+      // A follow-up is a reminder that stays: no insistent ring, no timeout.
+      final content = AlarmActions.content(
+        payload: late.payload,
+        title: late.title,
+        body: late.body,
+      );
+      expect(content.category, NotificationCategory.Reminder);
+      expect(content.timeoutAfter, isNull);
+      final ringing = AlarmActions.content(
+        payload: alarm.payload,
+        title: alarm.title,
+        body: alarm.body,
+      );
+      expect(ringing.category, NotificationCategory.Alarm);
+      expect(ringing.timeoutAfter, AlarmActions.ringFor);
+      // Visit reminders get one too.
+      care.visitsOf(uid, 'self')['gp'] = Visit(
+        id: 'gp',
+        title: 'GP Visit',
+        category: 'General',
+        startsAt: DateTime(2026, 10, 25, 10),
+        reminders: const ['1 hour before'],
+      );
+      care.emit();
+      await Future<void>.delayed(Duration.zero);
+      final visit = alarms.plan().singleWhere(
+        (p) => p.payload.kind == AlarmPayload.visit && p.payload.followUp,
+      );
+      expect(visit.title, 'Reminder: GP Visit — 1 hour before');
+      expect(visit.at, DateTime(2026, 10, 25, 9, 3, 5));
+    });
+
+    test('after the alarm time only the follow-up is left, and after that '
+        'neither', () async {
+      await android();
+      now = DateTime(2026, 10, 24, 20, 1);
+      var plans = alarms.plan().where((p) => p.payload.key == eightPm);
+      expect(plans.single.payload.followUp, isTrue);
+      now = DateTime(2026, 10, 24, 20, 4);
+      plans = alarms.plan().where((p) => p.payload.key == eightPm);
+      expect(plans, isEmpty);
+    });
+
+    test('a logged dose gets no follow-up', () async {
+      await android();
+      final amox = care.medicinesOf(uid, 'self')['amox']!;
+      final o = DoseOccurrence(amox, DateTime(2026, 10, 24), 20 * 60);
+      care.logsOf(uid, 'self')[o.logId] = DoseLog(
+        medicineId: 'amox',
+        day: o.day,
+        minutes: o.minutes,
+        status: DoseStatus.taken,
+        loggedAt: now,
+      );
+      care.emit();
+      await Future<void>.delayed(Duration.zero);
+      expect(keys(), isNot(contains(eightPm)));
+    });
+
+    test('iOS keeps every notification, so it gets none', () {
+      expect(alarms.plan().where((p) => p.payload.followUp), isEmpty);
+    });
+
+    test('the follow-up flag survives the round trip', () async {
+      await android();
+      final late = alarms.plan().firstWhere((p) => p.payload.followUp);
+      final back = AlarmPayload.from(late.payload.toMap());
+      expect(back.followUp, isTrue);
+      expect(back.id, late.id);
+    });
+  });
+
+  test('alarms set while exact alarms were off are set again once they are '
+      'allowed, so they ring on time', () async {
+    alarms.onClose();
+    Get.reset();
+    final plugin = _FakePlugin();
+    final notify = NotificationService(plugin: plugin)
+      ..ready = true
+      ..permission.value = NotifyPermission.granted
+      ..exactAlarms.value = false;
+    await start(notify: notify);
+    Future<void> granted() async {
+      for (final f in List.of(notify.onGranted)) {
+        await f();
+      }
+    }
+
+    await granted();
+    final first = plugin.scheduled.length;
+    expect(first, greaterThan(0));
+    expect(
+      plugin.scheduled.values.map((n) => n.schedule!.preciseAlarm),
+      everyElement(isFalse),
+    );
+
+    // Allowed on the system page: every pending alarm is set again, exact.
+    notify.exactAlarms.value = true;
+    plugin.created = 0;
+    await granted();
+    expect(plugin.scheduled.length, first);
+    expect(plugin.created, first);
+    expect(
+      plugin.scheduled.values.map((n) => n.schedule!.preciseAlarm),
+      everyElement(isTrue),
+    );
+
+    // Nothing changed: nothing is set again.
+    plugin.created = 0;
+    await granted();
+    expect(plugin.created, 0);
+  });
+}
+
+/// Keeps scheduled alarms in memory, like the plugin's own list.
+class _FakePlugin extends AwesomeNotifications {
+  final scheduled = <int, NotificationModel>{};
+  var created = 0;
+
+  @override
+  Future<bool> createNotification({
+    required NotificationContent content,
+    NotificationSchedule? schedule,
+    List<NotificationActionButton>? actionButtons,
+    Map<String, NotificationLocalization>? localizations,
+  }) async {
+    created++;
+    scheduled[content.id!] = NotificationModel(
+      content: content,
+      schedule: schedule,
+      actionButtons: actionButtons,
+    );
+    return true;
+  }
+
+  @override
+  Future<List<NotificationModel>> listScheduledNotifications() async =>
+      scheduled.values.toList();
+
+  @override
+  Future<void> cancel(int id) async => scheduled.remove(id);
+
+  @override
+  Future<void> dismiss(int id) async {}
 }

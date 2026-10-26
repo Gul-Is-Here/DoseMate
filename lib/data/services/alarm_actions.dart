@@ -24,6 +24,7 @@ class AlarmPayload {
     this.visitId,
     this.sig = '',
     this.snoozed = false,
+    this.followUp = false,
   });
 
   factory AlarmPayload.from(Map<String, String?> p) => AlarmPayload(
@@ -40,6 +41,7 @@ class AlarmPayload {
     visitId: p['visit'],
     sig: p['sig'] ?? '',
     snoozed: p['snooze'] == '1',
+    followUp: p['late'] == '1',
   );
 
   static const dose = 'dose';
@@ -60,6 +62,17 @@ class AlarmPayload {
   final String sig;
   final bool snoozed;
 
+  /// The quiet "still due" reminder left once the alarm stops ringing
+  /// unanswered (Android), so a missed alarm isn't gone without a trace.
+  final bool followUp;
+
+  /// This notification's id: alarm, snooze and follow-up never collide.
+  int get id => snoozed
+      ? AlarmActions.snoozeIdFor(key)
+      : followUp
+      ? AlarmActions.followUpIdFor(key)
+      : AlarmActions.idFor(key);
+
   Map<String, String?> toMap() => {
     'kind': kind,
     'uid': uid,
@@ -71,6 +84,7 @@ class AlarmPayload {
     'visit': ?visitId,
     'sig': sig,
     if (snoozed) 'snooze': '1',
+    if (followUp) 'late': '1',
   };
 
   /// Dose log ids of this alarm's doses.
@@ -88,9 +102,13 @@ abstract class AlarmActions {
   static const snoozeFor = Duration(minutes: 10);
 
   /// Android repeats the alarm sound until the alarm is acted on; past
-  /// this it's removed (server follow-ups and the Notifications screen
-  /// still show the dose).
+  /// this it's removed and, on Android, [followUpAfter] its follow-up takes
+  /// its place on the lock screen.
   static const ringFor = Duration(minutes: 3);
+
+  /// When the follow-up of an unanswered alarm appears: just after it
+  /// stops ringing.
+  static const followUpAfter = Duration(minutes: 3, seconds: 5);
 
   static const taken = 'taken';
   static const skip = 'skip';
@@ -108,22 +126,28 @@ abstract class AlarmActions {
 
   static int snoozeIdFor(String key) => idFor('snooze:$key');
 
+  static int followUpIdFor(String key) => idFor('late:$key');
+
   static NotificationContent content({
     required AlarmPayload payload,
     required String title,
     required String body,
   }) => NotificationContent(
-    id: payload.snoozed ? snoozeIdFor(payload.key) : idFor(payload.key),
+    id: payload.id,
     channelKey: channel,
     title: title,
     body: body,
-    category: NotificationCategory.Alarm,
+    // An alarm rings (insistently) for [ringFor]; a follow-up sounds once
+    // and stays on the lock screen until it's acted on or the dose logged.
+    category: payload.followUp
+        ? NotificationCategory.Reminder
+        : NotificationCategory.Alarm,
     wakeUpScreen: true,
     // A prominent heads-up notification, not a full-screen activity (see
     // AlarmService).
     fullScreenIntent: false,
     autoDismissible: false,
-    timeoutAfter: ringFor,
+    timeoutAfter: payload.followUp ? null : ringFor,
     payload: payload.toMap(),
   );
 
@@ -163,8 +187,10 @@ abstract class AlarmActions {
     }
     final p = AlarmPayload.from(raw);
     final plugin = AwesomeNotifications();
-    // Any button stops the sound: the alarm itself goes away.
+    // Any button stops the sound: the alarm itself goes away, and so does
+    // its follow-up, shown or still to come (it was seen).
     if (action.id != null) await plugin.dismiss(action.id!);
+    await plugin.cancel(followUpIdFor(p.key)).catchError((Object _) {});
     try {
       switch (action.buttonKeyPressed) {
         case taken:

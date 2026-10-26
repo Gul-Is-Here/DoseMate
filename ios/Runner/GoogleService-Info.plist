@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk.apps.googleusercontent.com</string>
+	<string>1074770041543-gdc1i8ubmhcom1881qgm0dvip4nr78ef.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk</string>
+	<string>com.googleusercontent.apps.1074770041543-gdc1i8ubmhcom1881qgm0dvip4nr78ef</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>1074770041543-49o3imcpes0ejrlr24nktb63essq0k27.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.dosemate.app</string>
+	<string>com.dosemate.mobile</string>
 	<key>PROJECT_ID</key>
 	<string>dosemate-70150</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1074770041543:ios:faa5479ac394f65a1bbce2</string>
+	<string>1:1074770041543:ios:5892f57b971ae8261bbce2</string>
 </dict>
 </plist>

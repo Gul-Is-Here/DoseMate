@@ -16,7 +16,7 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.dosemate.app"
+    namespace = "com.dosemate.mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.dosemate.app"
+        applicationId = "com.dosemate.mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

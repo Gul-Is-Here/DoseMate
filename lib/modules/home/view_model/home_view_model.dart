@@ -30,6 +30,8 @@ class DoseFeedback {
   final DateTime at;
 }
 
+enum ReminderIssue { off, late }
+
 class HomeViewModel extends GetxController {
   final _auth = Get.find<AuthService>();
   final care = Get.find<CareService>();
@@ -186,6 +188,44 @@ class HomeViewModel extends GetxController {
   }
 
   // Refills.
+
+  // Reminder delivery on this device.
+
+  NotificationService? get _notify => Get.isRegistered<NotificationService>()
+      ? Get.find<NotificationService>()
+      : null;
+
+  /// Hidden for this session once dismissed.
+  final reminderBannerDismissed = false.obs;
+
+  /// Why reminders may not reach this phone, or null when they will:
+  /// notifications are off, or (Android) alarms can't ring on time while
+  /// the phone is locked.
+  ReminderIssue? get reminderIssue {
+    // Read first, so the banner always has something to follow.
+    if (reminderBannerDismissed.value) return null;
+    final notify = _notify;
+    if (notify == null || !notify.ready) return null;
+    if (notify.permission.value == NotifyPermission.denied) {
+      return ReminderIssue.off;
+    }
+    // Read both, so the banner follows either changing.
+    return notify.remindersMayBeLate ? ReminderIssue.late : null;
+  }
+
+  Future<void> fixReminders() async {
+    final notify = _notify;
+    if (notify == null) return;
+    switch (reminderIssue) {
+      case ReminderIssue.off:
+        await notify.enable();
+      case ReminderIssue.late:
+        await notify.requestExactAlarms();
+      case null:
+    }
+  }
+
+  void dismissReminderBanner() => reminderBannerDismissed.value = true;
 
   final dismissedRefills = <String>{}.obs;
 

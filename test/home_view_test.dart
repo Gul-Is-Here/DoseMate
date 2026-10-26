@@ -10,6 +10,7 @@ import 'package:dosemate/data/services/care_service.dart';
 import 'package:dosemate/data/services/profile_service.dart';
 import 'package:dosemate/modules/home/view_model/home_view_model.dart';
 import 'package:dosemate/modules/home/views/home_view.dart';
+import 'package:dosemate/data/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -76,6 +77,38 @@ void main() {
     );
     await tester.pump();
   }
+
+  testWidgets('a banner says when reminders are off or may ring late, and '
+      'its button fixes the right thing', (tester) async {
+    final notify = Get.put<NotificationService>(FakeNotify());
+    final fake = notify as FakeNotify;
+    // Allowed, but no exact alarms (Android 14+ default): may be late.
+    notify.permission.value = NotifyPermission.granted;
+    notify.exactAlarms.value = false;
+    await pump(tester, const Size(400, 900));
+    expect(find.text('Reminders may ring late'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('home-fix-reminders')));
+    await tester.pump();
+    expect(fake.calls, ['exact']);
+
+    // Granted on the system page: the banner goes.
+    notify.exactAlarms.value = true;
+    await tester.pumpAndSettle();
+    expect(find.text('Reminders may ring late'), findsNothing);
+
+    // Notifications turned off: a different banner and fix.
+    notify.permission.value = NotifyPermission.denied;
+    await tester.pumpAndSettle();
+    expect(find.text('Reminders are off'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('home-fix-reminders')));
+    await tester.pump();
+    expect(fake.calls, ['exact', 'enable']);
+
+    // Dismissed for this session.
+    await tester.tap(find.byTooltip('Dismiss'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reminders are off'), findsNothing);
+  });
 
   testWidgets('top bar shows the active profile and follows a switch', (
     tester,
@@ -212,4 +245,22 @@ void main() {
     });
     debugDisableShadows = true;
   });
+}
+
+/// Notification state set by the test; records what the banner asks for.
+class FakeNotify extends NotificationService {
+  FakeNotify() {
+    ready = true;
+  }
+
+  final calls = <String>[];
+
+  @override
+  Future<void> askOnce() async {}
+
+  @override
+  Future<void> enable() async => calls.add('enable');
+
+  @override
+  Future<void> requestExactAlarms() async => calls.add('exact');
 }
