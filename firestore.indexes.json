@@ -13,6 +13,358 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "doseLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "day",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "doseLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "doseLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "doseLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "doseLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "doseLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "doseLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "doseLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shareLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "day",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shareLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shareLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shareLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shareLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shareLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shareLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shareLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "day",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "minutes",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

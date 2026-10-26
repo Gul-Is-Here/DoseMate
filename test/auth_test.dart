@@ -48,9 +48,21 @@ class FakeUser implements User {
   Future<void> updateDisplayName(String? displayName) async =>
       name = displayName;
 
+  /// Thrown by the next verification send, e.g. a rate limit.
+  FirebaseAuthException? sendError;
+  int tokenRefreshes = 0;
+
   @override
-  Future<void> sendEmailVerification([ActionCodeSettings? settings]) async =>
-      verificationEmails++;
+  Future<void> sendEmailVerification([ActionCodeSettings? settings]) async {
+    if (sendError case final e?) throw e;
+    verificationEmails++;
+  }
+
+  @override
+  Future<String?> getIdToken([bool forceRefresh = false]) async {
+    if (forceRefresh) tokenRefreshes++;
+    return 'token';
+  }
 
   @override
   Future<void> reload() async {}
@@ -87,6 +99,11 @@ class FakePicker implements GoogleAccountPicker {
 
   @override
   Future<void> signOut() async => signOuts++;
+
+  int disconnects = 0;
+
+  @override
+  Future<void> disconnect() async => disconnects++;
 }
 
 class FakeAuth implements FirebaseAuth {
@@ -107,14 +124,20 @@ class FakeAuth implements FirebaseAuth {
   Future<UserCredential> _complete(User user) async {
     if (nextError case final error?) throw error;
     signedIn = user;
+    controller.add(user); // as Firebase reports sign ins
     return FakeCredential(user);
   }
+
+  /// The user the next sign up creates.
+  FakeUser? nextUser;
 
   @override
   Future<UserCredential> createUserWithEmailAndPassword({
     required String email,
     required String password,
-  }) => _complete(FakeUser(emailVerified: false, provider: 'password'));
+  }) => _complete(
+    nextUser ?? FakeUser(emailVerified: false, provider: 'password'),
+  );
 
   @override
   Future<UserCredential> signInWithEmailAndPassword({
@@ -177,6 +200,41 @@ void main() {
       expect(user.name, 'Eleanor');
       expect(user.verificationEmails, 1);
       expect(AuthRepository.needsEmailVerification(user), isTrue);
+    });
+
+    test('a failed verification send still creates the account', () async {
+      auth.nextUser = FakeUser(emailVerified: false, provider: 'password')
+        ..sendError = FirebaseAuthException(code: 'too-many-requests');
+      final sent = await repo.signUpWithEmail(
+        name: 'Eleanor',
+        email: 'a@b.co',
+        password: 'abc12345',
+      );
+      expect(sent, isFalse);
+      expect(auth.signedIn, isNotNull);
+    });
+
+    test('resend errors keep their code; nothing is sent', () async {
+      final user = FakeUser(emailVerified: false, provider: 'password')
+        ..sendError = FirebaseAuthException(code: 'too-many-requests');
+      auth.signedIn = user;
+      await expectLater(
+        repo.sendEmailVerification(),
+        throwsA(
+          isA<AuthFailure>().having((f) => f.code, 'code', 'too-many-requests'),
+        ),
+      );
+      expect(user.verificationEmails, 0);
+    });
+
+    test('verification refreshes the ID token only once verified', () async {
+      final user = FakeUser(emailVerified: false, provider: 'password');
+      auth.signedIn = user;
+      expect(await repo.reloadEmailVerified(), isFalse);
+      expect(user.tokenRefreshes, 0);
+      user.emailVerified = true;
+      expect(await repo.reloadEmailVerified(), isTrue);
+      expect(user.tokenRefreshes, 1);
     });
 
     test('invalid credentials map to one generic message', () async {
@@ -266,10 +324,13 @@ void main() {
       expect(service.initialRoute, AppRoutes.home);
     });
 
-    test('restored unverified email session routes to verification', () async {
+    test('restored unverified email session routes to verification, and '
+        'loads no data', () async {
       auth.signedIn = FakeUser(emailVerified: false, provider: 'password');
       final service = await AuthService(repo, ProfileService(profiles)).init();
       expect(service.initialRoute, AppRoutes.verifyEmail);
+      expect(service.needsVerification, isTrue);
+      expect(profiles.migrations, isEmpty);
     });
 
     test('verification picks up after reload', () async {
@@ -316,12 +377,33 @@ void main() {
       }
     });
 
-    test('new accounts always see Profile Setup', () async {
+    test('a new email account verifies before Profile Setup', () async {
       final service = await signedIn(verified: false);
+      expect(
+        await service.routeAfterSignIn(isNewAccount: true),
+        AppRoutes.verifyEmail,
+      );
+      expect(profiles.migrations, isEmpty);
+    });
+
+    test('a new verified (Google) account goes to Profile Setup', () async {
+      final service = await signedIn(provider: 'google.com');
       expect(
         await service.routeAfterSignIn(isNewAccount: true),
         AppRoutes.profileSetup,
       );
+    });
+
+    test('once verified, a completed profile goes to Home', () async {
+      profiles.completeSetup('uid-1');
+      final user = FakeUser(emailVerified: false, provider: 'password');
+      auth.signedIn = user;
+      final service = await AuthService(repo, ProfileService(profiles)).init();
+      expect(await service.routeAfterSignIn(), AppRoutes.verifyEmail);
+      user.emailVerified = true;
+      await repo.reloadEmailVerified();
+      service.refreshUser();
+      expect(await service.routeAfterSignIn(), AppRoutes.home);
     });
 
     test('unverified email login verifies before the profile', () async {

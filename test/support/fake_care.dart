@@ -33,6 +33,10 @@ class FakeCare implements CareRepository {
   /// Holds writes until completed, to test repeated taps.
   Completer<void>? gate;
 
+  /// Holds the first snapshot of new listeners until completed, as on a
+  /// slow connection with nothing cached.
+  Completer<void>? loadGate;
+
   /// Listeners currently attached.
   int get listeners => _streams.where((c) => c.hasListener).length;
 
@@ -43,6 +47,10 @@ class FakeCare implements CareRepository {
   Map<String, DoseLog> logsOf(String uid, String pid) =>
       logs.putIfAbsent('$uid/$pid', () => {});
 
+  /// Pushes the current records to every listener (after editing them
+  /// directly).
+  void emit() => _emit();
+
   void _emit() {
     for (final c in _streams) {
       if (c.hasListener) c.add(null);
@@ -52,8 +60,13 @@ class FakeCare implements CareRepository {
   Stream<T> _live<T>(T Function() read) {
     if (loadFailure case final error?) return Stream.error(error);
     late final StreamController<void> c;
+    final held = loadGate?.future;
     c = StreamController<void>(
-      onListen: () => c.add(null),
+      onListen: () => held == null
+          ? c.add(null)
+          : held.then((_) {
+              if (c.hasListener) c.add(null);
+            }),
       onCancel: () => _streams.remove(c),
     );
     _streams.add(c);
@@ -72,6 +85,23 @@ class FakeCare implements CareRepository {
     return offline ? WriteResult.pending : WriteResult.confirmed;
   }
 
+  /// Log ids written with the legacy Taken marker.
+  final legacyMarked = <String>[];
+
+  /// Log ids the app asked to delete with a medicine.
+  final deletedLogIds = <String>[];
+
+  /// Snoozes recorded for the server: "uid/pid/logId" → until.
+  final snoozes = <String, DateTime>{};
+
+  @override
+  Future<WriteResult> snoozeDose(
+    String uid,
+    String pid,
+    String logId,
+    DateTime until,
+  ) => _write(() => snoozes['$uid/$pid/$logId'] = until);
+
   @override
   String newMedicineId(String uid, String pid) => 'med-${++_ids}';
 
@@ -79,8 +109,11 @@ class FakeCare implements CareRepository {
   String newVisitId(String uid, String pid) => 'visit-${++_ids}';
 
   @override
-  Stream<List<Medicine>> watchMedicines(String uid, String pid) =>
-      _live(() => medicinesOf(uid, pid).values.toList());
+  Stream<List<Medicine>> watchMedicines(
+    String uid,
+    String pid, {
+    bool shared = false,
+  }) => _live(() => medicinesOf(uid, pid).values.toList());
 
   @override
   Stream<List<Visit>> watchUpcomingVisits(
@@ -99,14 +132,165 @@ class FakeCare implements CareRepository {
           ..sort((a, b) => a.startsAt.compareTo(b.startsAt)),
   );
 
+  List<DoseLog> _history(String uid, String pid, HistoryQuery q) =>
+      logsOf(uid, pid).values
+          .where(
+            (l) =>
+                !l.day.isBefore(q.from) &&
+                l.day.isBefore(q.to) &&
+                (q.medicineId == null || l.medicineId == q.medicineId) &&
+                (q.status == null || l.status == q.status),
+          )
+          .toList()
+        ..sort(q.compare);
+
+  /// History reads so far: head listeners opened and pages fetched.
+  int historyHeads = 0;
+  int historyPages = 0;
+
+  /// Makes the next page fetch fail (then cleared).
+  CareFailure? failNextPage;
+
+  /// Pages report coming from the cache, as offline.
+  bool pagesFromCache = false;
+
+  /// Holds page fetches until completed, to test repeated triggers.
+  Completer<void>? pageGate;
+
   @override
-  Stream<List<DoseLog>> watchLogs(String uid, String pid, DateTime since) =>
-      _live(
-        () => logsOf(
-          uid,
-          pid,
-        ).values.where((l) => !l.day.isBefore(since)).toList(),
+  Stream<List<DoseLog>> watchHistoryHead(
+    String uid,
+    String pid,
+    HistoryQuery q,
+    int limit, {
+    bool shared = false,
+  }) {
+    historyHeads++;
+    return _live(() => _history(uid, pid, q).take(limit).toList());
+  }
+
+  @override
+  Future<HistoryPage> fetchHistoryPage(
+    String uid,
+    String pid,
+    HistoryQuery q, {
+    required DoseLog after,
+    required int limit,
+    bool shared = false,
+  }) async {
+    historyPages++;
+    await pageGate?.future;
+    if (failNextPage case final e?) {
+      failNextPage = null;
+      throw e;
+    }
+    return (
+      logs: _history(
+        uid,
+        pid,
+        q,
+      ).where((l) => q.compare(l, after) > 0).take(limit).toList(),
+      fromCache: pagesFromCache,
+    );
+  }
+
+  /// Range queries opened so far, to check listener reuse.
+  int rangeQueries = 0;
+
+  @override
+  Stream<List<Visit>> watchVisitsBetween(
+    String uid,
+    String pid,
+    DateTime from,
+    DateTime to,
+  ) {
+    rangeQueries++;
+    return _live(
+      () =>
+          visitsOf(uid, pid).values
+              .where(
+                (v) =>
+                    v.status == VisitStatus.scheduled &&
+                    !v.startsAt.isBefore(from) &&
+                    v.startsAt.isBefore(to),
+              )
+              .toList()
+            ..sort((a, b) => a.startsAt.compareTo(b.startsAt)),
+    );
+  }
+
+  @override
+  Stream<List<DoseLog>> watchLogsBetween(
+    String uid,
+    String pid,
+    DateTime from,
+    DateTime to, {
+    bool shared = false,
+  }) {
+    rangeQueries++;
+    return _live(
+      () => logsOf(uid, pid).values
+          .where((l) => !l.day.isBefore(from) && l.day.isBefore(to))
+          .toList(),
+    );
+  }
+
+  @override
+  Stream<List<DoseLog>> watchLogs(
+    String uid,
+    String pid,
+    DateTime since, {
+    bool shared = false,
+    bool includeCleared = false,
+  }) => _live(
+    () => [
+      ...logsOf(uid, pid).values,
+      if (includeCleared) ...undoneOf(uid, pid).values,
+    ].where((l) => !l.day.isBefore(since)).toList(),
+  );
+
+  /// Undone logs, kept for their revision as on the server.
+  final undone = <String, Map<String, DoseLog>>{};
+  Map<String, DoseLog> undoneOf(String uid, String pid) =>
+      undone.putIfAbsent('$uid/$pid', () => {});
+
+  /// What each log has taken from the supply, as `applyDoseStock` records.
+  final stockApplied = <String, int>{};
+
+  /// Taps written, in order, as (log id, tap id, revision).
+  final taps = <(String, String, int)>[];
+
+  int _revOf(String uid, String pid, String id) =>
+      (logsOf(uid, pid)[id] ?? undoneOf(uid, pid)[id])?.rev ?? 0;
+
+  /// The rules: only a newer revision, or a retry of the same tap.
+  void _checkRev(String uid, String pid, String id, DoseTap tap) {
+    final current = _revOf(uid, pid, id);
+    final same = taps.any(
+      (t) => t.$1 == id && t.$2 == tap.id && t.$3 == tap.rev,
+    );
+    if (tap.rev > current || (tap.rev == current && same)) return;
+    throw const CareFailure(
+      'This dose was updated on another device. Showing the latest.',
+      code: 'permission-denied',
+    );
+  }
+
+  /// The server's applyDoseStock, run right after each write.
+  void _applyStock(String uid, String pid, String logId, String medicineId) {
+    final key = '$uid/$pid/$logId';
+    final applied = stockApplied[key] ?? 0;
+    final m = medicinesOf(uid, pid)[medicineId];
+    final taken = logsOf(uid, pid)[logId]?.status == DoseStatus.taken;
+    final want = taken && (applied == -1 || (m?.quantity ?? 0) > 0) ? -1 : 0;
+    if (want == applied) return;
+    if (m != null) {
+      medicinesOf(uid, pid)[m.id] = m.copyWith(
+        quantity: m.quantity + want - applied,
       );
+    }
+    stockApplied[key] = want;
+  }
 
   @override
   Future<WriteResult> saveMedicine(
@@ -134,9 +318,8 @@ class FakeCare implements CareRepository {
   Future<WriteResult> setMedicineStatus(
     String uid,
     String pid,
-    String id,
-    MedicineStatus status,
-  ) => _updateMedicine(uid, pid, id, (m) => m.copyWith(status: status));
+    Medicine medicine,
+  ) => _updateMedicine(uid, pid, medicine.id, (_) => medicine);
 
   @override
   Future<WriteResult> addSupply(String uid, String pid, String id, int count) =>
@@ -155,9 +338,14 @@ class FakeCare implements CareRepository {
     Iterable<String> logIds = const [],
   }) => _write(() {
     medicinesOf(uid, pid).remove(id);
+    // Like the real query: every log of the medicine, undone ones too.
+    logsOf(uid, pid).removeWhere((_, l) => l.medicineId == id);
+    undoneOf(uid, pid).removeWhere((_, l) => l.medicineId == id);
     for (final l in logIds) {
       logsOf(uid, pid).remove(l);
+      undoneOf(uid, pid).remove(l);
     }
+    deletedLogIds.addAll(logIds);
   });
 
   @override
@@ -166,21 +354,29 @@ class FakeCare implements CareRepository {
     String pid,
     DoseOccurrence occurrence,
     DoseStatus status, {
-    int supplyChange = 0,
+    required DoseTap action,
+    String? note,
+    bool replacesLegacyTaken = false,
   }) => _write(() {
-    logsOf(uid, pid)[occurrence.logId] = DoseLog(
+    final id = occurrence.logId;
+    if (replacesLegacyTaken) legacyMarked.add(id);
+    _checkRev(uid, pid, id, action);
+    taps.add((id, action.id, action.rev));
+    undoneOf(uid, pid).remove(id);
+    logsOf(uid, pid)[id] = DoseLog(
       medicineId: occurrence.medicine.id,
       day: occurrence.day,
       minutes: occurrence.minutes,
       status: status,
       loggedAt: CareDates.at(occurrence.day, occurrence.minutes),
+      note: note,
+      medicineName: occurrence.medicine.name,
+      dosage: occurrence.medicine.dosage.isEmpty
+          ? null
+          : occurrence.medicine.dosage,
+      rev: action.rev,
     );
-    final m = medicinesOf(uid, pid)[occurrence.medicine.id];
-    if (m != null && supplyChange != 0) {
-      medicinesOf(uid, pid)[m.id] = m.copyWith(
-        quantity: m.quantity + supplyChange,
-      );
-    }
+    _applyStock(uid, pid, id, occurrence.medicine.id);
   });
 
   @override
@@ -188,15 +384,20 @@ class FakeCare implements CareRepository {
     String uid,
     String pid,
     DoseLog log, {
-    int supplyChange = 0,
+    required DoseTap action,
   }) => _write(() {
+    _checkRev(uid, pid, log.id, action);
+    taps.add((log.id, action.id, action.rev));
     logsOf(uid, pid).remove(log.id);
-    final m = medicinesOf(uid, pid)[log.medicineId];
-    if (m != null && supplyChange != 0) {
-      medicinesOf(uid, pid)[m.id] = m.copyWith(
-        quantity: m.quantity + supplyChange,
-      );
-    }
+    undoneOf(uid, pid)[log.id] = DoseLog(
+      medicineId: log.medicineId,
+      day: log.day,
+      minutes: log.minutes,
+      status: DoseStatus.skipped,
+      rev: action.rev,
+      isUndone: true,
+    );
+    _applyStock(uid, pid, log.id, log.medicineId);
   });
 
   @override

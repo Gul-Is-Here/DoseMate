@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification sounds are referenced by name only: keep them in release builds. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/alarm,@raw/notificationsound" />

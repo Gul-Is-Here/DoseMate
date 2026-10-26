@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,9 +10,23 @@ class NoAuth implements FirebaseAuth {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class NoFirestore implements FirebaseFirestore {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class FakeUser implements User {
   @override
   String get uid => 'uid-1';
+
+  @override
+  bool get emailVerified => true;
+
+  @override
+  String? get email => 'eleanor@example.com';
+
+  @override
+  String? get displayName => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

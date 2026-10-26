@@ -13,6 +13,7 @@ import '../../../data/services/care_service.dart';
 import '../../../data/services/profile_service.dart';
 import '../../../widgets/confirm_dialog.dart';
 import '../../../widgets/profile_switcher_sheet.dart';
+import '../../../widgets/app_snackbar.dart';
 
 export '../../../data/models/medicine.dart' show Frequency;
 
@@ -189,7 +190,7 @@ class AddMedicineViewModel extends GetxController {
     final file = File(picked.path);
     final problem = ImageValidator.validate(file);
     if (problem != null) {
-      Get.snackbar("Couldn't use that photo", problem);
+      showSnack("Couldn't use that photo", problem);
       return;
     }
     photo.value = file;
@@ -261,7 +262,7 @@ class AddMedicineViewModel extends GetxController {
     if (saving.value) return;
     final problem = validate(draft: draft);
     if (problem != null) {
-      Get.snackbar('Check the medicine details', problem);
+      showSnack('Check the medicine details', problem);
       return;
     }
     saving.value = true;
@@ -276,7 +277,12 @@ class AddMedicineViewModel extends GetxController {
           photoPath: uploaded.path,
         );
       }
-      final result = await _care.saveMedicine(pid, medicine, isNew: !_created);
+      final result = await _care.saveMedicine(
+        pid,
+        medicine,
+        isNew: !_created,
+        previous: _care.medicineById(medicineId) ?? editing,
+      );
       _created = true;
       if (uploaded != null) {
         photo.value = null;
@@ -285,7 +291,7 @@ class AddMedicineViewModel extends GetxController {
       }
       // Plain back would only close a snackbar that is still showing.
       Get.back(closeOverlays: true);
-      Get.snackbar(
+      showSnack(
         draft
             ? 'Draft saved'
             : (isEditing ? 'Medicine updated' : 'Medicine saved'),
@@ -295,7 +301,7 @@ class AddMedicineViewModel extends GetxController {
       );
     } on CareFailure catch (e) {
       if (uploaded != null) await _care.deletePhoto(uploaded.path);
-      Get.snackbar("Couldn't save medicine", e.message);
+      showSnack("Couldn't save medicine", e.message);
     } finally {
       saving.value = false;
     }
@@ -317,9 +323,9 @@ class AddMedicineViewModel extends GetxController {
       await _care.deleteMedicine(profileId.value, m);
       // Plain back would only close a snackbar that is still showing.
       Get.back(closeOverlays: true);
-      Get.snackbar('Medicine deleted', '${m.name} was removed.');
+      showSnack('Medicine deleted', '${m.name} was removed.');
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't delete medicine", e.message);
+      showSnack("Couldn't delete medicine", e.message);
     } finally {
       saving.value = false;
     }

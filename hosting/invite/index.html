@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Accept Invitation · DoseMate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#005c55;--on-primary:#fff;--surface:#f9f9ff;--card:#fff;--low:#f0f3ff;--container:#e7eeff;--text:#0c1c32;--muted:#3e4947;--outline:#6e7977;--error:#ba1a1a;--error-bg:#ffdad6;--fixed:#9cf2e8}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--surface);color:var(--text);font-family:'Plus Jakarta Sans',system-ui,sans-serif;display:flex;justify-content:center;padding:24px 16px}
+  main{width:100%;max-width:440px}
+  .card{background:var(--card);border-radius:32px;padding:28px 24px;box-shadow:0 2px 12px rgba(19,34,56,.06)}
+  .chip{display:inline-flex;gap:6px;align-items:center;background:var(--container);color:var(--primary);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+  h1{font-size:24px;line-height:32px;margin:12px 0 8px}
+  p{color:var(--muted);font-size:16px;line-height:24px;margin:0 0 16px}
+  label{display:block;font-size:14px;font-weight:600;margin:12px 0 6px}
+  input{width:100%;height:52px;border:0;border-radius:16px;background:var(--low);padding:0 16px;font:inherit;font-size:16px;color:var(--text)}
+  input:focus{outline:2px solid rgba(0,92,85,.25);background:#fff}
+  button{width:100%;min-height:52px;border:0;border-radius:999px;font:inherit;font-size:16px;font-weight:700;cursor:pointer;margin-top:12px}
+  .primary{background:var(--primary);color:var(--on-primary)}
+  .secondary{background:var(--container);color:var(--text)}
+  .link{background:none;color:var(--primary);min-height:44px;font-weight:600}
+  button:disabled{opacity:.6;cursor:default}
+  .note{background:var(--low);border-radius:16px;padding:12px;font-size:14px;line-height:20px;color:var(--muted)}
+  .error{background:var(--error-bg);color:#93000a}
+  .ok{background:#d6f5f1;color:#00504a}
+  .hidden{display:none}
+  .row{display:flex;gap:8px}
+  .row button{flex:1}
+  .summary{background:var(--low);border-radius:16px;padding:12px 16px;margin:0 0 16px;font-size:14px;line-height:22px;color:var(--muted)}
+  .summary strong{color:var(--text)}
+  .summary ul{margin:4px 0 0;padding-left:18px}
+</style>
+</head>
+<body>
+<main>
+  <div class="card" aria-live="polite">
+    <span class="chip">Privacy-first care circle</span>
+    <h1 id="title">Checking your invitation…</h1>
+    <p id="lead"></p>
+    <div id="summary" class="summary hidden"></div>
+    <div id="message" class="note hidden" role="status"></div>
+
+    <section id="signin" class="hidden">
+      <form id="signin-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" minlength="8" required>
+        <button class="primary" type="submit" id="signin-btn">Sign in</button>
+      </form>
+      <button class="secondary" id="register-btn" type="button">Create an account</button>
+      <button class="secondary" id="google-btn" type="button">Continue with Google</button>
+    </section>
+
+    <section id="verify" class="hidden">
+      <button class="primary" id="verified-btn" type="button">I've verified my email</button>
+      <button class="secondary" id="resend-verify-btn" type="button">Send verification email again</button>
+    </section>
+
+    <section id="accept" class="hidden">
+      <button class="primary" id="accept-btn" type="button">Accept Invitation</button>
+    </section>
+
+    <section id="retry" class="hidden">
+      <button class="primary" id="retry-btn" type="button">Try again</button>
+    </section>
+
+    <button class="secondary hidden" id="switch-btn" type="button">Switch account</button>
+    <button class="link hidden" id="signout-btn" type="button">Use a different account</button>
+  </div>
+</main>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    sendEmailVerification, signInWithPopup, GoogleAuthProvider, signOut, reload,
+  } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+  import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js';
+
+  const app = initializeApp({
+    apiKey: 'AIzaSyB2vK6fxrbLdH2Y_Oe96Rfy89LjMhp56BQ',
+    authDomain: 'dosemate-70150.firebaseapp.com',
+    projectId: 'dosemate-70150',
+    appId: '1:1074770041543:web:92f875a3c5dc45fd1bbce2',
+  });
+  const auth = getAuth(app);
+  const functions = getFunctions(app);
+  const check = httpsCallable(functions, 'checkInvitation');
+  const accept = httpsCallable(functions, 'acceptInvitation');
+
+  // The token travels in the URL fragment (never sent to servers). Keep it
+  // on this device through sign-in, sign-up and email verification (which
+  // may open in another tab), take it out of the address bar and history,
+  // and forget it once the invitation is settled or stale.
+  const KEY = 'dosemate.invite';
+  const MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+  const store = {
+    get() {
+      try {
+        const v = JSON.parse(localStorage.getItem(KEY) || 'null');
+        if (v && Date.now() - v.at < MAX_AGE_MS) return v.t;
+      } catch {}
+      try { return sessionStorage.getItem(KEY); } catch { return null; }
+    },
+    set(t) {
+      try { localStorage.setItem(KEY, JSON.stringify({ t, at: Date.now() })); } catch {}
+      try { sessionStorage.setItem(KEY, t); } catch {}
+    },
+    clear() {
+      try { localStorage.removeItem(KEY); } catch {}
+      try { sessionStorage.removeItem(KEY); } catch {}
+    },
+  };
+  const fromHash = new URLSearchParams(location.hash.slice(1)).get('t');
+  if (fromHash) {
+    store.set(fromHash);
+    history.replaceState(null, '', location.pathname);
+  }
+  const token = store.get();
+
+  const $ = (id) => document.getElementById(id);
+  const SECTIONS = ['signin', 'verify', 'accept', 'retry', 'switch-btn', 'signout-btn'];
+  const show = (...ids) => {
+    for (const s of SECTIONS) $(s).classList.add('hidden');
+    for (const s of ids) $(s).classList.remove('hidden');
+  };
+  const say = (title, lead = '') => { $('title').textContent = title; $('lead').textContent = lead; };
+  const note = (text, kind = '') => {
+    const m = $('message');
+    m.className = `note ${kind}`;
+    m.textContent = text;
+    m.classList.toggle('hidden', !text);
+  };
+  const busy = async (button, fn) => {
+    if (button.disabled) return;
+    button.disabled = true;
+    try { await fn(); } finally { button.disabled = false; }
+  };
+
+  const ACCESS = {
+    checklist: 'View the daily dose checklist (no dosages)',
+    alerts: 'Missed dose alerts',
+    appointments: 'Add and reschedule appointments',
+  };
+  function summary(inv) {
+    const box = $('summary');
+    box.replaceChildren();
+    if (!inv?.profileName) { box.classList.add('hidden'); return; }
+    const line = document.createElement('div');
+    line.append('Shared profile: ');
+    const name = document.createElement('strong');
+    name.textContent = inv.profileName;
+    line.append(name);
+    box.append(line);
+    const granted = Object.keys(ACCESS).filter((k) => inv.permissions?.[k]);
+    if (granted.length) {
+      const list = document.createElement('ul');
+      for (const k of granted) {
+        const li = document.createElement('li');
+        li.textContent = ACCESS[k];
+        list.append(li);
+      }
+      box.append(list);
+    }
+    box.classList.remove('hidden');
+  }
+
+  const AUTH_ERRORS = {
+    'auth/invalid-credential': 'Email or password is incorrect.',
+    'auth/wrong-password': 'Email or password is incorrect.',
+    'auth/user-not-found': 'No account uses this email. Create one instead.',
+    'auth/email-already-in-use': 'An account already uses this email. Sign in instead.',
+    'auth/weak-password': 'Use at least 8 characters for your password.',
+    'auth/invalid-email': 'Enter a valid email address.',
+    'auth/too-many-requests': 'Too many attempts. Wait a moment and try again.',
+    'auth/popup-closed-by-user': 'Google sign-in was closed before finishing.',
+    'auth/popup-blocked': 'Your browser blocked the Google sign-in window. Allow pop-ups for this page and try again.',
+    'auth/network-request-failed': 'No connection. Check your internet and try again.',
+  };
+  const authMessage = (e) =>
+    AUTH_ERRORS[e?.code] || 'Something went wrong. Please try again.';
+  const NETWORK = ['functions/unavailable', 'functions/deadline-exceeded', 'functions/internal'];
+
+  // The invitation as the server sees it for the signed-in account (if any).
+  let invite = null;
+  let checkedFor;
+  let accepted = null;
+  let renderId = 0;
+  let reloaded = false;
+
+  async function load(user) {
+    const uid = user?.uid ?? null;
+    if (invite && checkedFor === uid) return true;
+    try {
+      // Callables send the signed-in user's ID token, so the server can say
+      // whether this account is the invited one.
+      invite = (await check({ token })).data;
+      checkedFor = uid;
+      return true;
+    } catch (e) {
+      say('Couldn’t check this invitation',
+        navigator.onLine === false
+          ? 'You seem to be offline. Reconnect, then try again.'
+          : 'DoseMate couldn’t be reached. Try again in a moment.');
+      summary(null);
+      show('retry');
+      return false;
+    }
+  }
+
+  async function render() {
+    const id = ++renderId;
+    if (!token) {
+      say('Invitation link missing', 'Open the "Accept Invitation" button from your email again.');
+      return;
+    }
+    if (accepted) return; // Success stays on screen.
+    const user = auth.currentUser;
+    if (!(await load(user)) || id !== renderId) return;
+
+    const from = invite.inviterName || 'Someone';
+    summary(invite);
+    const done = {
+      invalid: ['This link isn’t valid', 'It may have been replaced by a newer invitation email. Use the latest one, or ask the sender to resend it.'],
+      expired: ['This invitation has expired', `Invitations last 7 days. Ask ${from} to resend it.`],
+      revoked: ['This invitation was cancelled', `${from} cancelled it. Ask them for a new one if you still need access.`],
+      accepted: invite.acceptedByYou === false
+        ? ['Invitation already accepted', 'Another account already accepted this invitation. If that wasn’t you, ask the sender for a new one.']
+        : ['Invitation already accepted', `You’re already in ${from}’s care circle. Open DoseMate and choose ${invite.profileName || 'the shared profile'} in the profile switcher.`],
+    }[invite.status];
+    if (done) {
+      say(...done);
+      if (invite.status === 'invalid') summary(null);
+      if (invite.status !== 'accepted' || invite.acceptedByYou !== undefined) store.clear();
+      // A signed-out visitor may be the one who accepted: let them check.
+      show(...(invite.status === 'accepted' && !user ? ['signin'] : user ? ['signout-btn'] : []));
+      return;
+    }
+
+    say(
+      `${from} invited you to their care circle`,
+      `Sign in as ${invite.emailHint}, the address this was sent to. You’ll only see what ${from} chose to share.`,
+    );
+    if (!user) { show('signin'); return; }
+    if (invite.recipient === 'other') {
+      note(`You’re signed in as ${user.email}, but this invitation is for ${invite.emailHint}. Switch to that account to accept.`, 'error');
+      show('switch-btn');
+      return;
+    }
+    if ((!user.emailVerified || invite.recipient === 'unverified') && !reloaded) {
+      // A restored session may predate verification done in another tab.
+      reloaded = true;
+      try { if (await refreshVerified()) { render(); return; } } catch {}
+    }
+    if (!user.emailVerified || invite.recipient === 'unverified') {
+      note(`We sent a verification link to ${user.email}. Open it, then come back here.`);
+      show('verify', 'signout-btn');
+      return;
+    }
+    note('');
+    show('accept', 'signout-btn');
+  }
+
+  function succeed(data) {
+    store.clear();
+    const from = data.inviterName || invite?.inviterName || 'The sender';
+    const profile = data.profileName || 'the shared profile';
+    accepted = data;
+    if (data.already) {
+      say('Invitation already accepted',
+        `You’re already in ${from}’s care circle. Open DoseMate and choose ${profile} in the profile switcher.`);
+      note('Nothing changed: your access was already set up.', 'ok');
+    } else {
+      say(`You’re now in ${from}’s care circle`,
+        `Open DoseMate and choose ${profile} in the profile switcher. We’re emailing you a confirmation with sign-in steps.`);
+      note('Invitation accepted.', 'ok');
+    }
+    show('signout-btn');
+  }
+
+  $('signin-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    busy($('signin-btn'), async () => {
+      try {
+        note('');
+        await signInWithEmailAndPassword(auth, $('email').value.trim(), $('password').value);
+      } catch (e) { note(authMessage(e), 'error'); }
+    });
+  });
+
+  // Verification links come back to this page, where the saved invitation
+  // is picked up again.
+  const verifySettings = () => ({ url: `${location.origin}/invite/` });
+
+  $('register-btn').addEventListener('click', () => busy($('register-btn'), async () => {
+    const email = $('email').value.trim();
+    const password = $('password').value;
+    if (!email || password.length < 8) {
+      note('Enter your email and a password of at least 8 characters, then tap Create an account.', 'error');
+      return;
+    }
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(cred.user, verifySettings());
+    } catch (e) { note(authMessage(e), 'error'); }
+  }));
+
+  // Always show Google's account chooser, so switching accounts can't
+  // silently reuse the one that was just signed out.
+  const google = new GoogleAuthProvider();
+  google.setCustomParameters({ prompt: 'select_account' });
+  $('google-btn').addEventListener('click', () => busy($('google-btn'), async () => {
+    try { note(''); await signInWithPopup(auth, google); }
+    catch (e) { note(authMessage(e), 'error'); }
+  }));
+
+  // Reloads the account and, once verified, takes a fresh ID token (the
+  // one the server checks) and re-checks the invitation.
+  async function refreshVerified() {
+    const user = auth.currentUser;
+    if (!user) return false;
+    await reload(user);
+    if (!auth.currentUser.emailVerified) return false;
+    // A fresh token carries the verified flag the server checks.
+    await auth.currentUser.getIdToken(true);
+    invite = null;
+    return true;
+  }
+
+  $('verified-btn').addEventListener('click', () => busy($('verified-btn'), async () => {
+    try {
+      if (!(await refreshVerified())) {
+        note('Not verified yet. Open the link in the verification email first.', 'error');
+        return;
+      }
+      note('');
+      render();
+    } catch (e) { note(authMessage(e), 'error'); }
+  }));
+
+  // Back from the verification email in another tab or app.
+  document.addEventListener('visibilitychange', async () => {
+    const waiting = !$('verify').classList.contains('hidden');
+    if (document.visibilityState !== 'visible' || accepted || !waiting) return;
+    try { if (await refreshVerified()) { note(''); render(); } } catch {}
+  });
+
+  $('resend-verify-btn').addEventListener('click', () => busy($('resend-verify-btn'), async () => {
+    try {
+      await sendEmailVerification(auth.currentUser, verifySettings());
+      note('Verification email sent.', 'ok');
+    } catch (e) { note(authMessage(e), 'error'); }
+  }));
+
+  $('accept-btn').addEventListener('click', () => busy($('accept-btn'), async () => {
+    note('Accepting…');
+    try {
+      succeed((await accept({ token })).data);
+    } catch (e) {
+      if (NETWORK.includes(e?.code)) {
+        // Nothing is lost: accepting again is safe if it did go through.
+        note('Couldn’t reach DoseMate. Check your connection and tap Accept again.', 'error');
+        return;
+      }
+      if (e?.details?.reason === 'wrong-account') {
+        invite = { ...invite, recipient: 'other' };
+        render();
+        return;
+      }
+      note(e?.message || 'Couldn’t accept the invitation. Please try again.', 'error');
+      // Re-read the invitation so the page shows its real state.
+      if (['functions/not-found', 'functions/already-exists', 'functions/failed-precondition',
+        'functions/deadline-exceeded'].includes(e?.code)) {
+        invite = null;
+        const msg = e.message;
+        await render();
+        if (invite?.status === 'pending') note(msg, 'error');
+      }
+    }
+  }));
+
+  $('retry-btn').addEventListener('click', () => busy($('retry-btn'), () => render()));
+
+  async function leave() {
+    note('');
+    accepted = null;
+    await signOut(auth);
+  }
+  $('signout-btn').addEventListener('click', leave);
+  $('switch-btn').addEventListener('click', leave);
+
+  onAuthStateChanged(auth, () => render());
+</script>
+</body>
+</html>

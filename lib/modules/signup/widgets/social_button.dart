@@ -12,6 +12,7 @@ class SocialButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.loading = false,
+    this.tinted = false,
   });
 
   const SocialButton.google({
@@ -19,19 +20,24 @@ class SocialButton extends StatelessWidget {
     required this.onTap,
     this.loading = false,
     this.label = 'Google',
-  }) : svg = _googleSvg;
+  }) : svg = _googleSvg,
+       tinted = false;
 
   const SocialButton.apple({
     super.key,
     required this.onTap,
     this.loading = false,
   }) : svg = _appleSvg,
-       label = 'Apple';
+       label = 'Apple',
+       tinted = true;
 
   final String svg;
   final String label;
   final VoidCallback onTap;
   final bool loading;
+
+  /// Single-colour logos follow the text colour so they show in dark mode.
+  final bool tinted;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +58,7 @@ class SocialButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (loading)
-                  const SizedBox(
+                  SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
@@ -61,7 +67,14 @@ class SocialButton extends StatelessWidget {
                     ),
                   )
                 else
-                  SvgPicture.string(svg, width: 20, height: 20),
+                  SvgPicture.string(
+                    svg,
+                    width: 20,
+                    height: 20,
+                    colorFilter: tinted
+                        ? ColorFilter.mode(AppColors.onSurface, BlendMode.srcIn)
+                        : null,
+                  ),
                 const SizedBox(width: 8),
                 Text(
                   label,

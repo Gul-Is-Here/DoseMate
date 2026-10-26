@@ -10,6 +10,8 @@ import '../../../data/services/care_service.dart';
 import '../../../data/services/profile_service.dart';
 import '../../../widgets/confirm_dialog.dart';
 import '../../../widgets/profile_switcher_sheet.dart';
+import '../../medicine_details/view_model/medicine_details_view_model.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class MedicinesViewModel extends GetxController {
   final _auth = Get.find<AuthService>();
@@ -151,7 +153,7 @@ class MedicinesViewModel extends GetxController {
       } else {
         final next = nextToday(m);
         if (next == null) {
-          Get.snackbar(
+          showSnack(
             'All caught up',
             'Every dose of ${m.name} today is logged.',
           );
@@ -160,18 +162,27 @@ class MedicinesViewModel extends GetxController {
         result = await care.logDose(next, DoseStatus.taken);
       }
       if (result == null) return;
-      Get.snackbar(
+      showSnack(
         'Dose logged',
         result == WriteResult.pending
             ? "Saved on this device. It will sync when you're back online."
             : '${m.name} marked as taken.',
       );
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't log dose", e.message);
+      showSnack("Couldn't log dose", e.message);
     }
   }
 
   void edit(Medicine m) => Get.toNamed(AppRoutes.addMedicine, arguments: m);
+
+  void openDetails(Medicine m) {
+    final pid = care.profileId;
+    if (pid == null) return;
+    Get.toNamed(
+      AppRoutes.medicineDetails,
+      arguments: MedicineDetailsArgs(medicineId: m.id, profileId: pid),
+    );
+  }
 
   void add() => Get.toNamed(AppRoutes.addMedicine);
 
@@ -200,7 +211,7 @@ class MedicinesViewModel extends GetxController {
     try {
       await care.setMedicineStatus(m, status);
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't update ${m.name}", e.message);
+      showSnack("Couldn't update ${m.name}", e.message);
     }
   }
 
@@ -210,7 +221,7 @@ class MedicinesViewModel extends GetxController {
     try {
       await care.addSupply(m, count);
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't update supply", e.message);
+      showSnack("Couldn't update supply", e.message);
     }
   }
 

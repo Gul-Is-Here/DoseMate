@@ -49,6 +49,17 @@ class GoogleAccountPicker {
     }
   }
 
+  /// Revokes the app's access to the Google account (account deletion).
+  Future<void> disconnect() async {
+    try {
+      await _init();
+      await GoogleSignIn.instance.disconnect();
+    } on Exception {
+      // Already signed out of Firebase; the grant can also be removed in
+      // the Google account's settings.
+    }
+  }
+
   /// Forgets the chosen account so the chooser appears next time.
   Future<void> signOut() async {
     if (_ready != true) return;

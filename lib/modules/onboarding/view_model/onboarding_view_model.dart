@@ -9,7 +9,8 @@ class OnboardingViewModel extends GetxController {
   final pageController = PageController();
   final currentIndex = 0.obs;
 
-  final pages = const <OnboardingPage>[
+  // A getter: the colours follow the current theme.
+  List<OnboardingPage> get pages => <OnboardingPage>[
     OnboardingPage(
       image: 'assets/onboarding/onboarding1.png',
       badge: 'Peace of Mind',

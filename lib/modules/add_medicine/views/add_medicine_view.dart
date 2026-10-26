@@ -9,15 +9,16 @@ import '../../../data/models/medicine.dart';
 import '../view_model/add_medicine_view_model.dart';
 
 const _radius = 16.0;
-const _error = Color(0xFFBA1A1A);
+Color get _error => AppColors.error;
 
 String _shortDate(DateTime d) => CareDates.short(d);
 
-final _labelStyle = AppTextStyles.labelMd.copyWith(color: AppColors.onSurface);
-final _hintStyle = AppTextStyles.labelSm.copyWith(
-  color: AppColors.onSurfaceVariant,
-);
-final _titleStyle = AppTextStyles.titleMd.copyWith(color: AppColors.onSurface);
+TextStyle get _labelStyle =>
+    AppTextStyles.labelMd.copyWith(color: AppColors.onSurface);
+TextStyle get _hintStyle =>
+    AppTextStyles.labelSm.copyWith(color: AppColors.onSurfaceVariant);
+TextStyle get _titleStyle =>
+    AppTextStyles.titleMd.copyWith(color: AppColors.onSurface);
 
 class AddMedicineView extends GetView<AddMedicineViewModel> {
   const AddMedicineView({super.key});
@@ -34,9 +35,7 @@ class AddMedicineView extends GetView<AddMedicineViewModel> {
           Expanded(
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.only(
-                bottom: 40 + MediaQuery.paddingOf(context).bottom,
-              ),
+              padding: const EdgeInsets.only(bottom: kSpaceLg),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -55,9 +54,7 @@ class AddMedicineView extends GetView<AddMedicineViewModel> {
                         _SupplyCard(),
                         SizedBox(height: kSpaceLg),
                         _Notice(),
-                        SizedBox(height: kSpaceLg + 4),
-                        _Actions(),
-                        SizedBox(height: kSpaceMd),
+                        _DeleteAction(),
                       ],
                     ),
                   ),
@@ -65,6 +62,8 @@ class AddMedicineView extends GetView<AddMedicineViewModel> {
               ),
             ),
           ),
+          // Pinned, so saving never needs a scroll to the end.
+          const DmActionBar(child: _Actions()),
         ],
       ),
     );
@@ -152,7 +151,7 @@ class _AssignPill extends GetView<AddMedicineViewModel> {
         onTap: controller.isEditing ? null : controller.openProfiles,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          const Icon(Icons.account_circle, size: 20, color: AppColors.primary),
+          Icon(Icons.account_circle, size: 20, color: AppColors.primary),
           const SizedBox(width: 4),
           Flexible(
             child: Obx(
@@ -166,7 +165,7 @@ class _AssignPill extends GetView<AddMedicineViewModel> {
           ),
           if (!controller.isEditing) ...[
             const SizedBox(width: 2),
-            const Icon(
+            Icon(
               Icons.arrow_drop_down,
               size: 18,
               color: AppColors.onSurfaceVariant,
@@ -196,7 +195,7 @@ class _IdentityCard extends GetView<AddMedicineViewModel> {
             children: [
               Expanded(
                 child: Text.rich(
-                  const TextSpan(
+                  TextSpan(
                     children: [
                       TextSpan(text: 'Medicine Name '),
                       TextSpan(
@@ -213,7 +212,7 @@ class _IdentityCard extends GetView<AddMedicineViewModel> {
                     ? Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.check_circle_outline,
                             size: 16,
                             color: AppColors.primary,
@@ -240,7 +239,7 @@ class _IdentityCard extends GetView<AddMedicineViewModel> {
                   hint: 'e.g., Amoxicillin',
                   hasError: controller.nameError.value != null,
                   trailing: controller.hasName.value
-                      ? const Icon(
+                      ? Icon(
                           Icons.check_circle_outline,
                           size: 24,
                           color: AppColors.primary,
@@ -289,7 +288,7 @@ class _IdentityCard extends GetView<AddMedicineViewModel> {
                     child: Obx(() {
                       final file = controller.photo.value;
                       final url = controller.photoUrl.value;
-                      const placeholder = Icon(
+                      final placeholder = Icon(
                         Icons.photo_camera_outlined,
                         size: 28,
                         color: AppColors.primaryContainer,
@@ -459,7 +458,7 @@ class _ScheduleCard extends GetView<AddMedicineViewModel> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.add_circle_outline,
                       size: 22,
                       color: AppColors.primary,
@@ -533,7 +532,7 @@ class _ScheduleCard extends GetView<AddMedicineViewModel> {
           child: _Input(
             controller: controller.notes,
             style: AppTextStyles.bodyMd,
-            trailing: const Icon(
+            trailing: Icon(
               Icons.local_drink_outlined,
               size: 20,
               color: AppColors.onSurfaceVariant,
@@ -720,7 +719,7 @@ class _SupplyCard extends GetView<AddMedicineViewModel> {
                 onTap: controller.toggleSupply,
                 child: Row(
                   children: [
-                    const DmIconCircle(
+                    DmIconCircle(
                       size: 36,
                       icon: Icons.inventory_2_outlined,
                       iconSize: 20,
@@ -743,7 +742,7 @@ class _SupplyCard extends GetView<AddMedicineViewModel> {
                     AnimatedRotation(
                       turns: open ? 0.5 : 0,
                       duration: const Duration(milliseconds: 150),
-                      child: const Icon(
+                      child: Icon(
                         Icons.expand_more,
                         size: 24,
                         color: AppColors.onSurfaceVariant,
@@ -875,7 +874,7 @@ class _Notice extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 2),
             child: Icon(
               Icons.verified_user_outlined,
@@ -921,78 +920,102 @@ class _Actions extends GetView<AddMedicineViewModel> {
       final editing = controller.editing;
       final canDraft =
           editing == null || editing.status == MedicineStatus.draft;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      return Row(
         children: [
-          DmPill(
-            color: AppColors.primaryContainer,
-            minHeight: 56,
-            expand: true,
-            shadow: kShadowMd,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            onTap: saving ? null : controller.save,
-            children: [
-              Flexible(
-                child: Text(
-                  editing == null ? 'Review Details & Save' : 'Save Changes',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.labelLg
-                      .copyWith(color: AppColors.onPrimary)
-                      .weight(FontWeight.w700),
-                ),
-              ),
-              const SizedBox(width: 4),
-              saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.onPrimary,
+          if (canDraft) ...[
+            Expanded(
+              flex: 2,
+              child: DmPill(
+                color: AppColors.surfaceContainerLow,
+                minHeight: 48,
+                expand: true,
+                onTap: saving ? null : () => controller.save(draft: true),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Save Draft',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelMd.copyWith(
+                        color: AppColors.onSurface,
                       ),
-                    )
-                  : const Icon(
-                      Icons.arrow_forward,
-                      size: 20,
-                      color: AppColors.onPrimary,
                     ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (canDraft)
-            DmPill(
-              color: Colors.transparent,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            flex: 3,
+            child: DmPill(
+              color: AppColors.primaryContainer,
+              minHeight: 48,
               expand: true,
-              onTap: saving ? null : () => controller.save(draft: true),
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              onTap: saving ? null : controller.save,
               children: [
-                Text(
-                  'Save Draft for Later',
-                  style: AppTextStyles.labelMd.copyWith(
-                    color: AppColors.onSurfaceVariant,
+                Flexible(
+                  child: Text(
+                    editing == null ? 'Review Details & Save' : 'Save Changes',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.labelMd
+                        .copyWith(color: AppColors.onPrimary)
+                        .weight(FontWeight.w700),
                   ),
                 ),
+                const SizedBox(width: 4),
+                saving
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.onPrimary,
+                        ),
+                      )
+                    : Icon(
+                        Icons.arrow_forward,
+                        size: 18,
+                        color: AppColors.onPrimary,
+                      ),
               ],
             ),
-          if (editing != null)
-            DmPill(
-              color: Colors.transparent,
-              expand: true,
-              onTap: saving ? null : controller.delete,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              children: [
-                const Icon(Icons.delete_outline, size: 18, color: _error),
-                const SizedBox(width: 6),
-                Text(
-                  'Delete Medicine',
-                  style: AppTextStyles.labelMd.copyWith(color: _error),
-                ),
-              ],
-            ),
+          ),
         ],
       );
     });
+  }
+}
+
+/// Delete stays at the end of the form, apart from the save buttons.
+class _DeleteAction extends GetView<AddMedicineViewModel> {
+  const _DeleteAction();
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.editing == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: kSpaceMd),
+      child: Obx(
+        () => DmPill(
+          color: Colors.transparent,
+          minHeight: 48,
+          expand: true,
+          onTap: controller.saving.value ? null : controller.delete,
+          children: [
+            Icon(Icons.delete_outline, size: 18, color: _error),
+            const SizedBox(width: 6),
+            Text(
+              'Delete Medicine',
+              style: AppTextStyles.labelMd.copyWith(color: _error),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1132,14 +1155,16 @@ class _Tile extends StatelessWidget {
     required this.child,
     required this.onTap,
     required this.padding,
-    this.color = AppColors.surfaceContainerLow,
+    this.color,
     this.shadow,
   });
 
   final Widget child;
   final VoidCallback onTap;
   final EdgeInsets padding;
-  final Color color;
+
+  /// Defaults to the raised input surface.
+  final Color? color;
   final List<BoxShadow>? shadow;
 
   @override
@@ -1148,7 +1173,7 @@ class _Tile extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(borderRadius: shape, boxShadow: shadow),
       child: Material(
-        color: color,
+        color: color ?? AppColors.surfaceContainerLow,
         borderRadius: shape,
         child: InkWell(
           onTap: onTap,
@@ -1241,7 +1266,7 @@ class _Input extends StatelessWidget {
         scrollPadding: const EdgeInsets.all(80),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: text.copyWith(color: AppColors.outline),
+          hintStyle: text.copyWith(color: AppColors.onSurfaceVariant),
           filled: true,
           fillColor: AppColors.surfaceContainerLow,
           isCollapsed: true,
@@ -1255,7 +1280,7 @@ class _Input extends StatelessWidget {
           suffixIconConstraints: const BoxConstraints(minWidth: 0),
           border: border(),
           enabledBorder: border(
-            hasError ? const BorderSide(color: _error) : BorderSide.none,
+            BorderSide(color: hasError ? _error : AppColors.outline),
           ),
           focusedBorder: border(
             BorderSide(

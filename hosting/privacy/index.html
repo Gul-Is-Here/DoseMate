@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DoseMate Privacy Policy</title>
+<meta name="description" content="How the DoseMate app collects, uses, stores and deletes your information.">
+<meta name="color-scheme" content="light dark">
+<link rel="canonical" href="https://dosemate-70150.web.app/privacy/">
+<style>
+:root {
+  --bg: #F7F8FC; --card: #FFFFFF; --text: #191B2A; --muted: #50536A;
+  --line: #E2E4EE; --accent: #4F46E5; --accent-soft: #EAE8FF; --brand: #8B80D9;
+  --warn-soft: #FFF0D6; --warn: #6E4500;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11121C; --card: #1B1D2B; --text: #ECEDF6; --muted: #B4B6C8;
+    --line: #2E3142; --accent: #B9B3FF; --accent-soft: #2A2850; --brand: #8B80D9;
+    --warn-soft: #3A2E12; --warn: #F5D38A;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11121C; --card: #1B1D2B; --text: #ECEDF6; --muted: #B4B6C8;
+  --line: #2E3142; --accent: #B9B3FF; --accent-soft: #2A2850; --brand: #8B80D9;
+  --warn-soft: #3A2E12; --warn: #F5D38A;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--card); padding: 8px 12px; border-radius: 8px; }
+.skip:focus { left: 16px; }
+header.top { border-bottom: 1px solid var(--line); background: var(--card); }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 16px 0; font-weight: 700; font-size: 18px; }
+main { padding: 32px 0 56px; }
+h1 { font-size: clamp(28px, 6vw, 38px); line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.5px; }
+h2 { font-size: 22px; line-height: 1.3; margin: 40px 0 8px; scroll-margin-top: 16px; }
+h3 { font-size: 17px; margin: 24px 0 4px; }
+p, li { overflow-wrap: anywhere; }
+.meta { color: var(--muted); margin: 0 0 24px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 16px 0; }
+.summary { background: var(--accent-soft); border-color: transparent; }
+.summary ul { margin: 8px 0 0; padding-left: 20px; }
+.note { background: var(--warn-soft); color: var(--text); border-color: transparent; }
+.note strong { color: var(--warn); }
+nav.toc ol { columns: 2 220px; margin: 8px 0 0; padding-left: 22px; }
+nav.toc li { margin: 2px 0; break-inside: avoid; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-top: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; border-top: 0; }
+.table-wrap { overflow-x: auto; }
+@media (max-width: 560px) {
+  table.stack thead { display: none; }
+  table.stack tr { display: block; border-top: 1px solid var(--line); padding: 8px 0; }
+  table.stack td { display: block; border: 0; padding: 2px 0; }
+  table.stack td:first-child { font-weight: 600; }
+}
+footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; padding: 24px 0 40px; }
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to the policy</a>
+<header class="top">
+  <div class="wrap brand">
+    <svg width="36" height="36" viewBox="0 0 120 120" role="img" aria-label="DoseMate logo">
+      <rect width="120" height="120" rx="33.6" fill="#8B80D9"/>
+      <g stroke-linecap="round" stroke-width="20" fill="none">
+        <line x1="60" y1="70" x2="45" y2="43.3" stroke="#FFFFFF"/>
+        <line x1="60" y1="70" x2="75" y2="43.3" stroke="#5BAA9B"/>
+      </g>
+    </svg>
+    <span>DoseMate</span>
+  </div>
+</header>
+
+<main id="content" class="wrap">
+  <h1>Privacy Policy</h1>
+  <p class="meta">Effective 26 October 2026 · Applies to the DoseMate app for Android and iOS</p>
+
+  <div class="card summary">
+    <strong>The short version</strong>
+    <ul>
+      <li>DoseMate keeps the medicines, dose records, appointments and family profiles you enter, so it can remind you and show your history.</li>
+      <li>We don’t show ads, sell your information, or use analytics, crash reporting or AI.</li>
+      <li>Your data is stored with Google Firebase. Google also handles sign-in with Google, push alerts and clinic address search.</li>
+      <li>You can delete your account and all its data at any time in <em>Settings → Delete Account</em>.</li>
+    </ul>
+  </div>
+
+  <nav class="toc card" aria-label="Contents">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#who">Who we are</a></li>
+      <li><a href="#collect">What we collect</a></li>
+      <li><a href="#not">What we don’t collect</a></li>
+      <li><a href="#use">How we use it</a></li>
+      <li><a href="#providers">Service providers and storage</a></li>
+      <li><a href="#sharing">When information is shared</a></li>
+      <li><a href="#permissions">Device permissions</a></li>
+      <li><a href="#device">Data kept on your device</a></li>
+      <li><a href="#retention">How long we keep it</a></li>
+      <li><a href="#delete">Deleting your account</a></li>
+      <li><a href="#rights">Your choices</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="#children">Children</a></li>
+      <li><a href="#health">Health information</a></li>
+      <li><a href="#changes">Changes to this policy</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="who">1. Who we are</h2>
+  <p>DoseMate is a medicine reminder and care-planning app developed and operated by <strong>Gul Faraz Ahmed</strong>, an individual developer based in Pakistan (“we”, “us”). We are responsible for the information described in this policy. You can reach us at <a href="mailto:gulfarazahmed08@gmail.com">gulfarazahmed08@gmail.com</a>.</p>
+
+  <h2 id="collect">2. What we collect</h2>
+  <p>We collect only what you enter or what the app needs to work. Everything below is linked to your account.</p>
+
+  <h3>Account</h3>
+  <p>Your email address and name. If you sign up with email, Firebase Authentication handles your password; we never see or store it. If you sign in with Google, we receive your Google account’s name, email address and profile photo link. We also store whether you finished setup and which profile you last had open.</p>
+
+  <h3>Profiles you manage</h3>
+  <p>For you and each family member you add (for example a parent or spouse): their name, relationship, date of birth if you give it, an emergency contact name and phone number if you give them, and a profile photo if you add one.</p>
+
+  <h3>Medicines and dose records</h3>
+  <p>Each medicine’s name, dosage, your notes, schedule (times, days, start and end dates, pauses), how many doses you have left, low-supply settings, and a reference photo if you add one. For each scheduled dose: whether you marked it taken or skipped, when you did, an optional note, your time-zone offset, and snoozes made from a reminder. These are records of what you tapped in the app. They don’t prove that a medicine was taken.</p>
+
+  <h3>Appointments and address search</h3>
+  <p>Each visit’s title, type, date and time, doctor, clinic, address, phone number, notes and reminder choices. When you search for a clinic address, the text you type is sent to the Google Places API to get suggestions. If you pick one, we store that place’s Google place ID, name and map coordinates with the visit, so “Directions” can open the right place. DoseMate never reads your device’s location.</p>
+
+  <h3>Devices and alerts</h3>
+  <p>When you allow notifications, we store this device’s push messaging token, its platform (Android or iOS) and its time zone. We use them to send your own “dose not logged yet”, low-supply and sync alerts. We also keep a small record of which alerts were sent, so each one is only sent once.</p>
+
+  <h3>Care sharing (when available)</h3>
+  <p>Some versions of DoseMate let you invite someone to help with a profile. If you do, we store the invitee’s email address, the permissions you chose and the invitation’s status, and we email them an invitation link on your behalf. If you accept an invitation, the person who invited you can see your name and email address, and you can see the parts of their profile they chose to share. The shared view never includes dosages, notes or photos.</p>
+
+  <h3>Messages from you</h3>
+  <p>If you email us, we keep your message and email address so we can reply.</p>
+
+  <h3>Technical information</h3>
+  <p>Our servers (Google Cloud) automatically keep request logs, which can include your IP address, app version, device type and error codes. We use them only to keep the service running and to fix problems.</p>
+
+  <h2 id="not">3. What we don’t collect</h2>
+  <ul>
+    <li>No advertising, and no advertising identifiers.</li>
+    <li>No analytics, usage tracking or crash-reporting tools.</li>
+    <li>No AI features: your information is not used to train or run AI models.</li>
+    <li>No GPS or device location, contacts, microphone or health-platform data (such as Health Connect or Apple Health).</li>
+    <li>We don’t sell, rent or trade your information.</li>
+  </ul>
+
+  <h2 id="use">4. How we use your information</h2>
+  <ul>
+    <li>To run the app: show your schedules, history, calendar and appointments, and keep them in sync across your devices.</li>
+    <li>To remind you: schedule alarms on your device and send push alerts to your devices.</li>
+    <li>To keep supply counts up to date as you log doses, and warn you when you’re running low.</li>
+    <li>To let you find a clinic’s address and open directions.</li>
+    <li>To share a profile with people you invite, if you choose to.</li>
+    <li>To send account emails (email verification, password reset) and to answer your messages.</li>
+    <li>To keep the service secure and working, for example rate limits that stop invitation spam.</li>
+  </ul>
+  <p>We process this information because you asked us to provide the app’s features (to perform our agreement with you). For health-related details such as your medicines, we rely on your choice to enter them, and you can remove them at any time.</p>
+
+  <h2 id="providers">5. Service providers and where data is stored</h2>
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr><th>Provider</th><th>What it does</th><th>What it receives</th></tr></thead>
+    <tbody>
+      <tr><td>Google Firebase (Authentication, Cloud Firestore, Cloud Storage, Cloud Functions, Hosting)</td><td>Sign-in, database, photo storage, server tasks, this web page</td><td>Your account and everything you save in the app. Stored in the United States.</td></tr>
+      <tr><td>Firebase Cloud Messaging (Google)</td><td>Delivers push alerts</td><td>Your device token and the alert’s text</td></tr>
+      <tr><td>Google Sign-In</td><td>Signs you in with Google, if you choose to</td><td>Handled by Google under your Google account</td></tr>
+      <tr><td>Google Places API</td><td>Clinic address suggestions</td><td>The text you type in the address field, and the app’s identifier</td></tr>
+      <tr><td>Google (Gmail)</td><td>Sends care-sharing invitation emails</td><td>The invitee’s email address, and the inviter’s and profile’s names</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>These providers process data for us under their own terms and security practices (see <a href="https://firebase.google.com/support/privacy">Firebase privacy and security</a> and <a href="https://policies.google.com/privacy">Google’s Privacy Policy</a>). Because these servers are in the United States, your information is transferred outside Pakistan and your own country.</p>
+
+  <h2 id="sharing">6. When information is shared</h2>
+  <ul>
+    <li><strong>With people you choose:</strong> people you invite to help with a profile, and anyone you send a PDF or CSV history export to. Exports are created on your device, and you decide where they go.</li>
+    <li><strong>With the service providers</strong> listed above, only to run the app.</li>
+    <li><strong>If the law requires it:</strong> to comply with a valid legal request, or to protect someone’s safety.</li>
+  </ul>
+  <p>We don’t share your information with advertisers, data brokers, insurers or employers.</p>
+
+  <h2 id="permissions">7. Device permissions</h2>
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr><th>Permission</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Notifications</td><td>Dose and appointment reminders, and alerts from our server</td></tr>
+      <tr><td>Alarms &amp; reminders (Android exact alarms)</td><td>Ring reminders at the exact time you set</td></tr>
+      <tr><td>Run at startup, vibrate, keep awake (Android)</td><td>Restore reminders after a restart, and make the alarm ring and wake the screen</td></tr>
+      <tr><td>Camera and photos</td><td>Only when you choose to add a profile or medicine photo</td></tr>
+      <tr><td>Internet</td><td>Sync your data and search for addresses</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>You can turn permissions off in your phone’s settings at any time. If you do, the features that need them stop working.</p>
+
+  <h2 id="device">8. Data kept on your device</h2>
+  <p>To work offline and ring on time, the app keeps the following on your phone: a copy of your recent records, the reminders scheduled for the next two days, your appearance setting, and which notifications you’ve read. Logging out removes this account’s reminders and alerts from the device. Deleting your account also clears the stored copy and this account’s settings.</p>
+
+  <h2 id="retention">9. How long we keep it</h2>
+  <ul>
+    <li><strong>Your account and app data:</strong> until you delete them, or delete your account. Deleting a medicine in the app removes it and its dose records from our database, and deleting a visit removes that visit. Family profiles are removed when you delete your account.</li>
+    <li><strong>Device tokens:</strong> until you log out on that device, delete your account, or the token stops working.</li>
+    <li><strong>Invitations:</strong> until they’re cancelled or the account that sent them is deleted. Links expire after 7 days.</li>
+    <li><strong>Server logs:</strong> up to 30 days.</li>
+    <li><strong>Backups:</strong> we don’t keep separate database backups, so deleted data can’t be restored.</li>
+  </ul>
+
+  <h2 id="delete">10. Deleting your account</h2>
+  <p>In the app, open <strong>Settings → Delete Account</strong>. You’ll be asked to confirm it’s you, with your password or your Google account. Deletion then permanently removes:</p>
+  <ul>
+    <li>your sign-in account;</li>
+    <li>every profile you manage, with all their medicines, schedules, dose records, snoozes, alerts, appointments and photos;</li>
+    <li>access you gave others to your profiles, and every invitation you sent;</li>
+    <li>your access to profiles others shared with you (their own profiles and data aren’t affected);</li>
+    <li>your devices’ push tokens, so no further alerts are sent, and the reminders and stored data on the device you delete from.</li>
+  </ul>
+  <p>The app only says your account is deleted after our server confirms that all of the above is gone. If something fails partway, the app tells you and you can try again to finish.</p>
+  <div class="card note">
+    <p style="margin:0"><strong>What remains, and for how long</strong></p>
+    <ul style="margin-bottom:0">
+      <li><strong>A deletion record</strong> holding only your account ID and timestamps. We keep it for about 65 minutes after deletion, so that anything another of your signed-in devices saves in that time is deleted too. If a deletion can’t finish and your account still exists, the record stays until you try again, for up to 30 days.</li>
+      <li><strong>Server logs</strong> for up to 30 days (see section 9).</li>
+      <li><strong>Other people’s records:</strong> if someone else invited you to help with a profile, their own record of that invitation (with the email address they typed) stays in their account until they delete it.</li>
+      <li><strong>Copies you made:</strong> exports or emails you sent to others are outside our control.</li>
+      <li><strong>Other devices:</strong> another phone signed in to the account stops receiving alerts straight away. Reminders that phone had already scheduled (up to two days ahead) are removed the next time the app runs there and finds the account gone. To remove them sooner, log out or uninstall the app on that phone.</li>
+    </ul>
+  </div>
+  <p>These steps are also on our <a href="/delete-account/">account deletion page</a>.</p>
+  <p>Can’t open the app? Email <a href="mailto:gulfarazahmed08@gmail.com?subject=DoseMate%20account%20deletion">gulfarazahmed08@gmail.com</a> from the address on your account and ask us to delete it. We may ask you to confirm the request, and we’ll complete it within 30 days.</p>
+
+  <h2 id="rights">11. Your choices</h2>
+  <ul>
+    <li><strong>See and correct:</strong> everything you entered is visible in the app and can be edited there.</li>
+    <li><strong>Get a copy:</strong> export your dose history as a PDF or CSV from History, or email us for a copy of your data.</li>
+    <li><strong>Delete:</strong> remove individual items, or your whole account (section 10).</li>
+    <li><strong>Limit:</strong> turn off notifications, camera or photo access in your phone’s settings, and skip optional fields such as date of birth or emergency contact.</li>
+  </ul>
+  <p>Wherever you live, you can contact us about any of these. We’ll answer within 30 days. If you’re not satisfied, you can complain to your local data protection authority.</p>
+
+  <h2 id="security">12. Security</h2>
+  <p>Data is encrypted in transit (HTTPS) and at rest by Google. Database and storage rules let only your signed-in, verified account read or change your data, and let the people you invite see only what you share with them. Photos are private to your account. No system is perfectly secure, so keep your device locked and your password private.</p>
+
+  <h2 id="children">13. Children</h2>
+  <p>DoseMate is meant for adults managing their own or their family’s care, and isn’t directed at children under 13. A parent or guardian may add a profile for a child they look after. If you believe a child has created an account, contact us and we’ll delete it.</p>
+
+  <h2 id="health">14. Health information</h2>
+  <p>DoseMate is a reminder and record-keeping tool. It doesn’t give medical advice, diagnose conditions or check drug interactions. Reminders depend on your device and its settings, so always follow your doctor’s or pharmacist’s instructions.</p>
+
+  <h2 id="changes">15. Changes to this policy</h2>
+  <p>If we change how we handle your information, we’ll update this page and its effective date, and we’ll tell you in the app before an important change takes effect.</p>
+
+  <h2 id="contact">16. Contact</h2>
+  <p>Gul Faraz Ahmed, Pakistan<br>Email: <a href="mailto:gulfarazahmed08@gmail.com">gulfarazahmed08@gmail.com</a></p>
+</main>
+
+<footer>
+  <div class="wrap">© 2026 Gul Faraz Ahmed · DoseMate</div>
+</footer>
+</body>
+</html>

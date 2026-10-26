@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/care_dates.dart';
+import '../../../data/repositories/places_repository.dart';
 import '../../../widgets/app_shell.dart';
+import '../../../widgets/skeleton.dart';
 import '../view_model/add_visit_view_model.dart';
 
 const _radius = 16.0;
 const _gap6 = SizedBox(height: 6);
-const _error = Color(0xFFBA1A1A);
+Color get _error => AppColors.error;
 
 class AddVisitView extends GetView<AddVisitViewModel> {
   const AddVisitView({super.key});
@@ -24,9 +27,7 @@ class AddVisitView extends GetView<AddVisitViewModel> {
           Expanded(
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.only(
-                bottom: 40 + MediaQuery.paddingOf(context).bottom,
-              ),
+              padding: const EdgeInsets.only(bottom: kSpaceLg),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -46,8 +47,7 @@ class AddVisitView extends GetView<AddVisitViewModel> {
                         _PrepCard(),
                         SizedBox(height: kSpaceMd),
                         _Notice(),
-                        SizedBox(height: kSpaceMd),
-                        _Actions(),
+                        _EditActions(),
                       ],
                     ),
                   ),
@@ -55,6 +55,8 @@ class AddVisitView extends GetView<AddVisitViewModel> {
               ),
             ),
           ),
+          // Pinned, so saving never needs a scroll to the end.
+          const DmActionBar(child: _Actions()),
         ],
       ),
     );
@@ -75,7 +77,7 @@ class _Intro extends GetView<AddVisitViewModel> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const DmIconCircle(
+            DmIconCircle(
               size: 40,
               icon: Icons.edit_calendar,
               iconSize: 22,
@@ -134,7 +136,7 @@ class _Categories extends GetView<AddVisitViewModel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: kMargin),
             child: _Label('Visit Category', color: AppColors.onSurface),
           ),
@@ -397,7 +399,7 @@ class _LocationCard extends GetView<AddVisitViewModel> {
                   child: InkWell(
                     onTap: controller.callClinic,
                     borderRadius: BorderRadius.circular(_radius),
-                    child: const SizedBox(
+                    child: SizedBox(
                       width: 56,
                       height: 56,
                       child: Icon(
@@ -420,7 +422,7 @@ class _LocationCard extends GetView<AddVisitViewModel> {
           ),
           child: Row(
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 2),
                 child: Icon(
                   Icons.commute,
@@ -480,20 +482,33 @@ class _PlaceSuggestions extends GetView<AddVisitViewModel> {
       final state = controller.placeSearch.value;
       final Widget body = switch (state) {
         PlaceSearch.idle => const SizedBox.shrink(),
-        PlaceSearch.loading => Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
+        // Suggestion rows to come, in their place.
+        PlaceSearch.loading => Skeleton(
+          label: 'Searching places',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.primary,
+              for (var i = 0; i < 2; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      const Bone.circle(size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: BoneColumn(
+                          children: [
+                            Bone.text(AppTextStyles.labelMd, widthFactor: 0.5),
+                            Bone.text(hint, widthFactor: 0.85),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text('Searching places…', style: hint),
             ],
           ),
         ),
@@ -504,77 +519,52 @@ class _PlaceSuggestions extends GetView<AddVisitViewModel> {
             style: hint,
           ),
         ),
-        PlaceSearch.error => Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  controller.placeError.value ?? 'Address search failed.',
-                  style: hint,
+        PlaceSearch.error => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 20,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          controller.placeError.value ??
+                              'Address search failed.',
+                          style: hint,
+                        ),
+                      ),
+                    ),
+                    if (controller.placeErrorRetryable.value)
+                      TextButton(
+                        onPressed: controller.retryPlaceSearch,
+                        child: const Text('Retry'),
+                      )
+                    else
+                      const SizedBox(width: 8),
+                  ],
                 ),
               ),
-              TextButton(
-                onPressed: controller.retryPlaceSearch,
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+            ),
+            // A place that couldn't be opened: the others can still be
+            // chosen.
+            if (controller.suggestions.isNotEmpty)
+              ..._suggestionRows(controller.suggestions, hint),
+          ],
         ),
         PlaceSearch.results => Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final s in controller.suggestions)
-              InkWell(
-                onTap: () => controller.selectPlace(s),
-                borderRadius: BorderRadius.circular(_radius),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 20,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.labelMd.copyWith(
-                                color: AppColors.onSurface,
-                              ),
-                            ),
-                            Text(
-                              s.address,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: hint,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            // Required attribution when not showing a Google map.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Text('Powered by Google', style: hint),
-              ),
-            ),
-          ],
+          children: _suggestionRows(controller.suggestions, hint),
         ),
       };
       if (state == PlaceSearch.idle) return body;
@@ -589,6 +579,57 @@ class _PlaceSuggestions extends GetView<AddVisitViewModel> {
       );
     });
   }
+
+  /// The suggestion rows and Google's attribution under them.
+  List<Widget> _suggestionRows(List<PlaceSuggestion> list, TextStyle hint) => [
+    for (final s in list)
+      InkWell(
+        onTap: () => controller.selectPlace(s),
+        borderRadius: BorderRadius.circular(_radius),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 20,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelMd.copyWith(
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    Text(
+                      s.address,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: hint,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    // Required attribution when not showing a Google map.
+    Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text('Powered by Google', style: hint),
+      ),
+    ),
+  ];
 }
 
 /// Stand-in for the reference's static map photo, which is not bundled.
@@ -601,21 +642,22 @@ class _MapPreview extends GetView<AddVisitViewModel> {
       borderRadius: BorderRadius.circular(_radius),
       child: Container(
         height: 144,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.center,
-            colors: [Color(0xFF4A5468), AppColors.surfaceContainerHigh],
+            // A dark scrim under light text, the same in both themes.
+            colors: [const Color(0xE6191B2A), AppColors.surfaceContainerHigh],
           ),
         ),
         alignment: Alignment.bottomLeft,
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.location_on,
               size: 20,
-              color: AppColors.primaryFixed,
+              color: AppPalette.dark.onSelected,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -626,7 +668,7 @@ class _MapPreview extends GetView<AddVisitViewModel> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.labelMd.copyWith(
-                    color: AppColors.surface,
+                    color: AppPalette.dark.textPrimary,
                   ),
                 ),
               ),
@@ -676,11 +718,7 @@ class _PrepCard extends GetView<AddVisitViewModel> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.add,
-                          size: 14,
-                          color: AppColors.onSurface,
-                        ),
+                        Icon(Icons.add, size: 14, color: AppColors.onSurface),
                         const SizedBox(width: 4),
                         Text(
                           p,
@@ -710,7 +748,7 @@ class _Notice extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 2),
             child: Icon(Icons.info_outline, size: 18, color: AppColors.outline),
           ),
@@ -721,7 +759,9 @@ class _Notice extends StatelessWidget {
               'schedule coordination and family caregiver reminders. This '
               'tool does not directly link to hospital EMR or clinical '
               'portals.',
-              style: AppTextStyles.bodySm.copyWith(color: AppColors.outline),
+              style: AppTextStyles.bodySm.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -735,55 +775,91 @@ class _Actions extends GetView<AddVisitViewModel> {
 
   @override
   Widget build(BuildContext context) {
-    final secondary = AppTextStyles.labelMd.copyWith(
-      color: AppColors.onSurface,
-    );
+    return Obx(() {
+      final saving = controller.saving.value;
+      return Row(
+        children: [
+          if (!controller.isEditing) ...[
+            Expanded(
+              flex: 2,
+              child: DmPill(
+                color: AppColors.surfaceContainerLow,
+                minHeight: 48,
+                expand: true,
+                onTap: saving ? null : Get.back,
+                children: [
+                  Text(
+                    'Cancel',
+                    style: AppTextStyles.labelMd.copyWith(
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            flex: 3,
+            child: DmWideButton(
+              label: controller.isEditing ? 'Save Changes' : 'Save Appointment',
+              icon: Icons.check_circle,
+              height: 48,
+              compact: true,
+              color: AppColors.primaryContainer,
+              onTap: saving ? null : controller.save,
+            ),
+          ),
+        ],
+      );
+    });
+  }
+}
+
+/// Cancelling or deleting a visit stays at the end of the form, apart from
+/// the save button.
+class _EditActions extends GetView<AddVisitViewModel> {
+  const _EditActions();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!controller.isEditing) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: kSpaceMd),
+      padding: const EdgeInsets.only(top: kSpaceMd),
       child: Obx(() {
         final saving = controller.saving.value;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DmWideButton(
-              label: controller.isEditing ? 'Save Changes' : 'Save Appointment',
-              icon: Icons.check_circle,
-              height: 56,
-              color: AppColors.primaryContainer,
-              onTap: saving ? null : controller.save,
+            DmPill(
+              color: AppColors.surfaceContainerLow,
+              minHeight: 48,
+              expand: true,
+              onTap: saving ? null : controller.cancelVisit,
+              children: [
+                Text(
+                  'Cancel Visit',
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            if (controller.isEditing) ...[
-              DmPill(
-                color: AppColors.surfaceContainerLow,
-                minHeight: 48,
-                expand: true,
-                onTap: saving ? null : controller.cancelVisit,
-                children: [Text('Cancel Visit', style: secondary)],
-              ),
-              const SizedBox(height: 8),
-              DmPill(
-                color: Colors.transparent,
-                minHeight: 48,
-                expand: true,
-                onTap: saving ? null : controller.deleteVisit,
-                children: [
-                  const Icon(Icons.delete_outline, size: 18, color: _error),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Delete Visit',
-                    style: AppTextStyles.labelMd.copyWith(color: _error),
-                  ),
-                ],
-              ),
-            ] else
-              DmPill(
-                color: AppColors.surfaceContainerLow,
-                minHeight: 48,
-                expand: true,
-                onTap: saving ? null : Get.back,
-                children: [Text('Cancel', style: secondary)],
-              ),
+            DmPill(
+              color: Colors.transparent,
+              minHeight: 48,
+              expand: true,
+              onTap: saving ? null : controller.deleteVisit,
+              children: [
+                Icon(Icons.delete_outline, size: 18, color: _error),
+                const SizedBox(width: 6),
+                Text(
+                  'Delete Visit',
+                  style: AppTextStyles.labelMd.copyWith(color: _error),
+                ),
+              ],
+            ),
           ],
         );
       }),
@@ -873,14 +949,21 @@ class _CardTitle extends StatelessWidget {
 }
 
 class _Label extends StatelessWidget {
-  const _Label(this.text, {this.color = AppColors.onSurfaceVariant});
+  const _Label(this.text, {this.color});
 
   final String text;
-  final Color color;
+
+  /// Defaults to secondary text.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return Text(text, style: AppTextStyles.labelMd.copyWith(color: color));
+    return Text(
+      text,
+      style: AppTextStyles.labelMd.copyWith(
+        color: color ?? AppColors.onSurfaceVariant,
+      ),
+    );
   }
 }
 
@@ -938,7 +1021,7 @@ class _Input extends StatelessWidget {
       scrollPadding: const EdgeInsets.all(80),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: text.copyWith(color: AppColors.outline),
+        hintStyle: text.copyWith(color: AppColors.onSurfaceVariant),
         filled: true,
         fillColor: AppColors.surfaceContainerLow,
         isCollapsed: true,
@@ -953,8 +1036,13 @@ class _Input extends StatelessWidget {
             : Icon(icon, size: 20, color: AppColors.onSurfaceVariant),
         prefixIconConstraints: const BoxConstraints(minWidth: 48),
         border: border,
-        enabledBorder: border,
-        focusedBorder: border,
+        // A visible edge on any surface, indigo while typing.
+        enabledBorder: border.copyWith(
+          borderSide: BorderSide(color: AppColors.outline),
+        ),
+        focusedBorder: border.copyWith(
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
+        ),
       ),
     );
     return multiline ? field : SizedBox(height: 56, child: field);

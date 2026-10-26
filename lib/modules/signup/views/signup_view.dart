@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -10,6 +11,7 @@ import '../view_model/signup_view_model.dart';
 import '../widgets/account_for_selector.dart';
 import '../widgets/signup_text_field.dart';
 import '../widgets/social_button.dart';
+import '../../../widgets/app_logo.dart';
 
 class SignupView extends GetView<SignupViewModel> {
   const SignupView({super.key});
@@ -96,24 +98,16 @@ class SignupView extends GetView<SignupViewModel> {
               const SizedBox(height: 24),
               const _OrDivider(),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: Obx(
-                      () => SocialButton.google(
-                        loading: controller.isGoogleLoading.value,
-                        onTap: controller.signUpWithGoogle,
-                      ),
-                    ),
+              // One sign-in per platform: Google on Android, Apple on iOS.
+              if (defaultTargetPlatform == TargetPlatform.iOS)
+                SocialButton.apple(onTap: controller.signUpWithApple)
+              else
+                Obx(
+                  () => SocialButton.google(
+                    loading: controller.isGoogleLoading.value,
+                    onTap: controller.signUpWithGoogle,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SocialButton.apple(
-                      onTap: controller.signUpWithApple,
-                    ),
-                  ),
-                ],
-              ),
+                ),
               const SizedBox(height: 24),
               const _PrivacyNote(),
               const SizedBox(height: 24),
@@ -166,7 +160,7 @@ class _TopBar extends StatelessWidget {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: Get.back,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 44,
                 height: 44,
                 child: Icon(
@@ -177,33 +171,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  shape: BoxShape.circle,
-                  boxShadow: AppTheme.shadowSm,
-                ),
-                child: const Icon(
-                  Icons.medication,
-                  size: 18,
-                  color: AppColors.onPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                AppStrings.appName,
-                style: AppTextStyles.titleLg.copyWith(
-                  color: AppColors.onSurface,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.025 * 20,
-                ),
-              ),
-            ],
-          ),
+          const AppLogo(size: 40),
           const SizedBox(width: 44),
         ],
       ),
@@ -234,10 +202,11 @@ class _HeroCard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [
-                    AppColors.inverseSurface.withValues(alpha: 0.5),
-                    AppColors.inverseSurface.withValues(alpha: 0),
-                    AppColors.inverseSurface.withValues(alpha: 0),
+                  // A dark scrim over the photo in either theme.
+                  colors: const [
+                    Color(0x80191B2A),
+                    Color(0x00191B2A),
+                    Color(0x00191B2A),
                   ],
                 ),
               ),
@@ -259,11 +228,7 @@ class _HeroCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.verified,
-                      size: 18,
-                      color: AppColors.primary,
-                    ),
+                    Icon(Icons.verified, size: 18, color: AppColors.primary),
                     const SizedBox(width: 8),
                     Text(
                       'Trusted by 65,000+ families',
@@ -298,7 +263,7 @@ class _OrDivider extends StatelessWidget {
           child: Text(
             'OR FAST SIGN UP WITH',
             style: AppTextStyles.labelSm.copyWith(
-              color: AppColors.outline,
+              color: AppColors.onSurfaceVariant,
               letterSpacing: 0.05 * 12,
             ),
           ),
@@ -323,7 +288,7 @@ class _PrivacyNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 2),
             child: Icon(
               Icons.shield_outlined,

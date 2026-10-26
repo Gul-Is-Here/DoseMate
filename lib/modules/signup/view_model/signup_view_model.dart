@@ -6,6 +6,7 @@ import '../../../core/utils/validators.dart';
 import '../../../data/models/user_profile.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../widgets/app_snackbar.dart';
 
 export '../../../data/models/user_profile.dart' show AccountFor;
 
@@ -41,7 +42,7 @@ class SignupViewModel extends GetxController {
     if (error != null) return _showError(error);
 
     await _run(isLoading, () async {
-      await _auth.repository.signUpWithEmail(
+      _auth.verificationEmailSent = await _auth.repository.signUpWithEmail(
         name: name,
         email: email,
         password: password,
@@ -68,7 +69,7 @@ class SignupViewModel extends GetxController {
 
   // TODO: add Sign in with Apple (needs an Apple Developer account).
   void signUpWithApple() =>
-      Get.snackbar('Coming soon', 'Sign in with Apple is not available yet.');
+      showSnack('Coming soon', 'Sign in with Apple is not available yet.');
 
   void signIn() => Get.offNamed(AppRoutes.login);
 
@@ -86,7 +87,7 @@ class SignupViewModel extends GetxController {
   }
 
   void _showError(String message) =>
-      Get.snackbar("Couldn't create account", message);
+      showSnack("Couldn't create account", message);
 
   @override
   void onClose() {

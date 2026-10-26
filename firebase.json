@@ -1,1 +1,147 @@
-{"flutter": {"platforms": {"android": {"default": {"projectId": "dosemate-70150", "appId": "1:1074770041543:android:0f6f81016b0edcfa1bbce2", "fileOutput": "android/app/google-services.json"}}, "ios": {"default": {"projectId": "dosemate-70150", "appId": "1:1074770041543:ios:faa5479ac394f65a1bbce2", "uploadDebugSymbols": false, "fileOutput": "ios/Runner/GoogleService-Info.plist"}}, "macos": {"default": {"projectId": "dosemate-70150", "appId": "1:1074770041543:ios:faa5479ac394f65a1bbce2", "uploadDebugSymbols": false, "fileOutput": "macos/Runner/GoogleService-Info.plist"}}, "dart": {"lib/firebase_options.dart": {"projectId": "dosemate-70150", "configurations": {"android": "1:1074770041543:android:0f6f81016b0edcfa1bbce2", "ios": "1:1074770041543:ios:faa5479ac394f65a1bbce2", "macos": "1:1074770041543:ios:faa5479ac394f65a1bbce2", "web": "1:1074770041543:web:92f875a3c5dc45fd1bbce2", "windows": "1:1074770041543:web:ec2dbc1a349c03681bbce2"}}}}}, "firestore": {"rules": "firestore.rules", "indexes": "firestore.indexes.json"}, "storage": {"rules": "storage.rules"}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dosemate-70150",
+          "appId": "1:1074770041543:android:0f6f81016b0edcfa1bbce2",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "dosemate-70150",
+          "appId": "1:1074770041543:ios:faa5479ac394f65a1bbce2",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "dosemate-70150",
+          "appId": "1:1074770041543:ios:faa5479ac394f65a1bbce2",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dosemate-70150",
+          "configurations": {
+            "android": "1:1074770041543:android:0f6f81016b0edcfa1bbce2",
+            "ios": "1:1074770041543:ios:faa5479ac394f65a1bbce2",
+            "macos": "1:1074770041543:ios:faa5479ac394f65a1bbce2",
+            "web": "1:1074770041543:web:92f875a3c5dc45fd1bbce2",
+            "windows": "1:1074770041543:web:ec2dbc1a349c03681bbce2"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "test",
+        "*.local",
+        "firebase-debug.log"
+      ]
+    }
+  ],
+  "hosting": {
+    "public": "hosting",
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ],
+    "rewrites": [
+      {
+        "source": "/invite",
+        "destination": "/invite/index.html"
+      },
+      {
+        "source": "/privacy",
+        "destination": "/privacy/index.html"
+      },
+      {
+        "source": "/delete-account",
+        "destination": "/delete-account/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/{privacy,delete-account}{,/**}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=600"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          }
+        ]
+      },
+      {
+        "source": "/invite/**",
+        "headers": [
+          {
+            "key": "Referrer-Policy",
+            "value": "no-referrer"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          }
+        ]
+      },
+      {
+        "source": "/invite",
+        "headers": [
+          {
+            "key": "Referrer-Policy",
+            "value": "no-referrer"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          }
+        ]
+      }
+    ]
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    },
+    "auth": {
+      "port": 9099
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}

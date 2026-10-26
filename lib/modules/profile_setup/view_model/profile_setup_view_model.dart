@@ -12,6 +12,7 @@ import '../../../data/models/user_profile.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/profile_service.dart';
+import '../../../widgets/app_snackbar.dart';
 
 /// What Profile Setup edits. Passed as the route argument.
 class ProfileEditorArgs {
@@ -254,7 +255,7 @@ class ProfileSetupViewModel extends GetxController {
         ),
         _ => ("Couldn't open the picker", 'Please try again.'),
       };
-      Get.snackbar(title, message);
+      showSnack(title, message);
       return;
     }
     if (picked == null) return; // Cancelled.
@@ -262,7 +263,7 @@ class ProfileSetupViewModel extends GetxController {
     final file = File(picked.path);
     final problem = ImageValidator.validate(file);
     if (problem != null) {
-      Get.snackbar("Couldn't use that photo", problem);
+      showSnack("Couldn't use that photo", problem);
       return;
     }
     pendingPhoto.value = file;
@@ -281,7 +282,7 @@ class ProfileSetupViewModel extends GetxController {
     if (isSaving.value || isLoading.value) return;
     if (_auth.user.value == null) return;
     if (loadError.value != null) {
-      Get.snackbar(
+      showSnack(
         'Profile not loaded',
         'Tap "Try again" to load your saved profile before saving changes.',
       );
@@ -294,7 +295,7 @@ class ProfileSetupViewModel extends GetxController {
     final error =
         Validators.name(name) ?? Validators.optionalPhone(contactPhone);
     if (error != null) {
-      Get.snackbar('Check your profile', error);
+      showSnack('Check your profile', error);
       return;
     }
 
@@ -316,11 +317,17 @@ class ProfileSetupViewModel extends GetxController {
         onUploadProgress: (value) => uploadProgress.value = value,
       );
       pendingPhoto.value = null;
-      _goHome();
-      Get.snackbar('Profile saved', 'Your changes are saved.');
+      // Edits return to where they were opened (Settings, Family); first
+      // setup continues to Home.
+      if (mode != EditorMode.setup && canGoBack) {
+        Get.back();
+      } else {
+        _goHome();
+      }
+      showSnack('Profile saved', 'Your changes are saved.');
     } on ProfileFailure catch (e) {
       // Fields and the picked photo stay as entered so the user can retry.
-      Get.snackbar("Couldn't save profile", e.message);
+      showSnack("Couldn't save profile", e.message);
     } finally {
       if (!isClosed) {
         isSaving.value = false;

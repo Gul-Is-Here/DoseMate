@@ -55,11 +55,7 @@ class ProfileOptionCard extends StatelessWidget {
                   boxShadow: selected ? AppTheme.shadowSm : null,
                 ),
                 child: selected
-                    ? const Icon(
-                        Icons.check,
-                        size: 20,
-                        color: AppColors.onPrimary,
-                      )
+                    ? Icon(Icons.check, size: 20, color: AppColors.onPrimary)
                     : null,
               ),
               const SizedBox(width: 16),

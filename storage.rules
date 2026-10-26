@@ -32,7 +32,8 @@ service firebase.storage {
     }
 
     function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
+      return request.auth != null && request.auth.uid == uid
+        && request.auth.token.email_verified == true;
     }
   }
 }

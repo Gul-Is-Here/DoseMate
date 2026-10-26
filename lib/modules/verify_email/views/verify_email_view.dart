@@ -22,11 +22,11 @@ class VerifyEmailView extends GetView<VerifyEmailViewModel> {
                 child: Container(
                   width: 72,
                   height: 72,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.primaryFixed,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.mark_email_unread,
                     size: 32,
                     color: AppColors.primary,
@@ -44,8 +44,18 @@ class VerifyEmailView extends GetView<VerifyEmailViewModel> {
               const SizedBox(height: 8),
               Obx(
                 () => Text(
-                  'We sent a verification link to ${controller.email}. '
-                  'Open it, then come back and tap the button below.',
+                  switch (controller.emailSent.value) {
+                    false =>
+                      'We couldn’t send the verification link to '
+                          '${controller.email}. Tap Resend Email to try again.',
+                    true =>
+                      'We sent a verification link to ${controller.email}. '
+                          'Open it (check spam too), then come back and tap '
+                          'the button below.',
+                    null =>
+                      'Verify ${controller.email} to continue. Open the link '
+                          'we emailed you, or tap Resend Email for a new one.',
+                  },
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodyMd.copyWith(
                     color: AppColors.onSurfaceVariant,
@@ -88,7 +98,7 @@ class VerifyEmailView extends GetView<VerifyEmailViewModel> {
                 child: TextButton(
                   onPressed: controller.signOut,
                   child: Text(
-                    'Use a different account',
+                    'Sign Out',
                     style: AppTextStyles.labelMd.copyWith(
                       color: AppColors.primary,
                     ),

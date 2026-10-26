@@ -5,6 +5,7 @@ import '../../../app/routes/app_routes.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class LoginViewModel extends GetxController {
   final _auth = Get.find<AuthService>();
@@ -47,10 +48,6 @@ class LoginViewModel extends GetxController {
     });
   }
 
-  // TODO: authenticate with local_auth once biometric sign in is supported.
-  void signInWithBiometrics() =>
-      Get.snackbar('Coming soon', 'Biometric sign in is not available yet.');
-
   Future<void> forgotPassword() async {
     if (_busy) return;
     final email = emailController.text.trim();
@@ -62,7 +59,7 @@ class LoginViewModel extends GetxController {
     }
     await _run(isResetLoading, () async {
       await _auth.repository.sendPasswordReset(email);
-      Get.snackbar(
+      showSnack(
         'Check your inbox',
         'If an account exists for $email, a password reset link is on its way.',
       );
@@ -84,7 +81,7 @@ class LoginViewModel extends GetxController {
     }
   }
 
-  void _showError(String message) => Get.snackbar('Sign in failed', message);
+  void _showError(String message) => showSnack('Sign in failed', message);
 
   @override
   void onClose() {

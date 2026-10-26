@@ -11,6 +11,7 @@ import '../../../data/repositories/care_repository.dart';
 import '../../../data/repositories/places_repository.dart';
 import '../../../data/services/care_service.dart';
 import '../../../widgets/confirm_dialog.dart';
+import '../../../widgets/app_snackbar.dart';
 
 enum PlaceSearch { idle, loading, results, empty, error }
 
@@ -88,6 +89,13 @@ class AddVisitViewModel extends GetxController {
   final placeSearch = PlaceSearch.idle.obs;
   final placeError = RxnString();
 
+  /// Whether Retry can help with [placeError]; setup and key problems
+  /// can't be fixed by trying again.
+  final placeErrorRetryable = false.obs;
+
+  /// The request that failed, repeated as it was by [retryPlaceSearch].
+  Future<void> Function()? _failed;
+
   /// The place picked for the current address text; cleared as soon as the
   /// text is edited, so stale coordinates are never saved.
   final selectedPlace = Rxn<VisitPlace>();
@@ -148,12 +156,12 @@ class AddVisitViewModel extends GetxController {
     _debounce = Timer(searchDelay, _search);
   }
 
-  Future<void> _search() async {
-    final query = address.text.trim();
+  Future<void> _search() => _searchFor(address.text.trim());
+
+  Future<void> _searchFor(String query) async {
     final request = ++_request;
     _sessionToken ??= PlacesRepository.newSessionToken();
-    placeSearch.value = PlaceSearch.loading;
-    placeError.value = null;
+    _startPlaceRequest();
     try {
       final results = await _places.autocomplete(
         query,
@@ -167,14 +175,30 @@ class AddVisitViewModel extends GetxController {
     } on PlacesFailure catch (e) {
       if (request != _request) return;
       suggestions.clear();
-      placeError.value = e.message;
-      placeSearch.value = PlaceSearch.error;
+      _placeFailed(e, () => _searchFor(query));
     }
   }
 
+  void _startPlaceRequest() {
+    placeSearch.value = PlaceSearch.loading;
+    placeError.value = null;
+    _failed = null;
+  }
+
+  void _placeFailed(PlacesFailure e, Future<void> Function() repeat) {
+    placeError.value = e.message;
+    placeErrorRetryable.value = e.retryable;
+    _failed = repeat;
+    placeSearch.value = PlaceSearch.error;
+  }
+
+  /// Repeats the request that failed: the same search, or the details of
+  /// the same suggestion. The typed address is never touched.
   void retryPlaceSearch() {
+    final repeat = _failed;
+    if (repeat == null || placeSearch.value != PlaceSearch.error) return;
     _debounce?.cancel();
-    _search();
+    repeat();
   }
 
   /// Fetches the place's details (ending the billing session) and fills the
@@ -182,8 +206,7 @@ class AddVisitViewModel extends GetxController {
   Future<void> selectPlace(PlaceSuggestion suggestion) async {
     _debounce?.cancel();
     final request = ++_request;
-    placeSearch.value = PlaceSearch.loading;
-    placeError.value = null;
+    _startPlaceRequest();
     try {
       final details = await _places.details(
         suggestion.placeId,
@@ -202,12 +225,18 @@ class AddVisitViewModel extends GetxController {
         latitude: details.latitude,
         longitude: details.longitude,
       );
+      // The place's name fills the clinic only when none was typed.
+      if (clinic.text.trim().isEmpty && details.name != details.address) {
+        clinic.text = details.name.length > 100
+            ? details.name.substring(0, 100)
+            : details.name;
+      }
       suggestions.clear();
       placeSearch.value = PlaceSearch.idle;
     } on PlacesFailure catch (e) {
       if (request != _request) return;
-      placeError.value = e.message;
-      placeSearch.value = PlaceSearch.error;
+      // The suggestions stay, so another one can be chosen.
+      _placeFailed(e, () => selectPlace(suggestion));
     }
   }
 
@@ -294,7 +323,7 @@ class AddVisitViewModel extends GetxController {
     if (saving.value) return;
     final problem = validate();
     if (problem != null) {
-      Get.snackbar('Check the visit details', problem);
+      showSnack('Check the visit details', problem);
       return;
     }
     saving.value = true;
@@ -304,7 +333,7 @@ class AddVisitViewModel extends GetxController {
       _created = true;
       // Plain back would only close a snackbar that is still showing.
       Get.back(closeOverlays: true);
-      Get.snackbar(
+      showSnack(
         isEditing ? 'Visit updated' : 'Visit saved',
         result == WriteResult.pending
             ? "Saved on this device. It will sync when you're back online."
@@ -312,7 +341,7 @@ class AddVisitViewModel extends GetxController {
                   '${CareDates.long(visit.startsAt)}.',
       );
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't save visit", e.message);
+      showSnack("Couldn't save visit", e.message);
     } finally {
       saving.value = false;
     }
@@ -354,9 +383,9 @@ class AddVisitViewModel extends GetxController {
       await action();
       // Plain back would only close a snackbar that is still showing.
       Get.back(closeOverlays: true);
-      Get.snackbar(done, editing!.title);
+      showSnack(done, editing!.title);
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't update visit", e.message);
+      showSnack("Couldn't update visit", e.message);
     } finally {
       saving.value = false;
     }

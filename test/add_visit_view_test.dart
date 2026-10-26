@@ -248,7 +248,7 @@ void main() {
     expect(places.searches, isEmpty); // still debouncing
     await tester.pump(const Duration(milliseconds: 200));
     expect(places.searches.map((s) => s.input), ['St Jude']);
-    expect(find.text('Searching places…'), findsOneWidget);
+    expect(find.bySemanticsLabel('Searching places'), findsOneWidget);
 
     // A newer search starts; the older reply arrives late and is ignored.
     await tester.enterText(addressField(), 'St Jude Dental');
@@ -300,6 +300,74 @@ void main() {
     expect(find.text('St. Jude Dental Clinic'), findsOneWidget);
   });
 
+  testWidgets('a failed place lookup retries that lookup, not the search', (
+    tester,
+  ) async {
+    await pump(tester, const Size(400, 3000));
+    final vm = Get.find<AddVisitViewModel>();
+    vm.title.text = 'Cleaning';
+    vm.clinic.text = 'My dentist';
+    await tester.enterText(addressField(), 'St Jude');
+    await tester.pump(const Duration(milliseconds: 400));
+    places.searches.single.reply.complete(const [stJude]);
+    await tester.pump();
+
+    places.detailsFailure = const PlacesFailure(
+      'Address search is taking too long.',
+      code: 'timeout',
+      kind: PlacesErrorKind.network,
+    );
+    await tester.tap(find.text('St. Jude Dental Clinic'));
+    await tester.pump();
+    expect(find.text('Address search is taking too long.'), findsOneWidget);
+    // The suggestion is still there to try again or pick another.
+    expect(find.text('St. Jude Dental Clinic'), findsOneWidget);
+    expect(vm.selectedPlace.value, isNull);
+
+    places.detailsFailure = null;
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+    expect(places.searches, hasLength(1)); // no new search
+    expect(places.detailRequests.map((r) => r.placeId), [
+      'place-stjude',
+      'place-stjude',
+    ]);
+    expect(places.detailRequests.last.token, places.detailRequests.first.token);
+    expect(vm.selectedPlace.value?.placeId, 'place-stjude');
+    expect(vm.selectedPlace.value?.longitude, -117.9256);
+    expect(vm.address.text, '120 Medical Center Dr, Fullerton, CA 92835, USA');
+    // What was typed is kept: the title, and the clinic name.
+    expect(vm.title.text, 'Cleaning');
+    expect(vm.clinic.text, 'My dentist');
+  });
+
+  testWidgets('setup and key errors explain themselves without a Retry', (
+    tester,
+  ) async {
+    await pump(tester, const Size(400, 3000));
+    final vm = Get.find<AddVisitViewModel>();
+    vm.title.text = 'Cleaning';
+    await tester.enterText(addressField(), 'Clinic Road 4');
+    await tester.pump(const Duration(milliseconds: 400));
+    places.searches.single.reply.completeError(
+      const PlacesFailure(
+        'Address search isn’t set up yet. You can still type the address.',
+        code: 'SERVICE_DISABLED',
+        kind: PlacesErrorKind.config,
+      ),
+    );
+    await tester.pump();
+    expect(find.textContaining('isn’t set up yet'), findsOneWidget);
+    expect(find.text('Retry'), findsNothing);
+    expect(find.textContaining('No matching places'), findsNothing);
+    expect(vm.address.text, 'Clinic Road 4');
+    expect(vm.title.text, 'Cleaning');
+    // Typing more still searches again.
+    await tester.enterText(addressField(), 'Clinic Road 45');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(places.searches, hasLength(2));
+  });
+
   testWidgets('the chosen place is saved and comes back when reopened', (
     tester,
   ) async {
@@ -348,8 +416,10 @@ void main() {
     );
     expect(edit.selectedPlace.value?.placeId, 'place-stjude');
     expect(places.searches, hasLength(1)); // reopening doesn't search
-    await tester.ensureVisible(find.text('St. Jude Dental Clinic'));
-    expect(find.text('St. Jude Dental Clinic'), findsOneWidget); // map label
+    // The place's name filled the empty clinic field and labels the map.
+    expect(edit.clinic.text, 'St. Jude Dental Clinic');
+    expect(saved.clinic, 'St. Jude Dental Clinic');
+    expect(find.text('St. Jude Dental Clinic'), findsNWidgets(2));
     await tester.tap(find.text('Save Changes'));
     await tester.pumpAndSettle();
     expect(

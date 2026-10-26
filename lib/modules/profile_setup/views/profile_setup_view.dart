@@ -56,7 +56,7 @@ class ProfileSetupView extends GetView<ProfileSetupViewModel> {
                         onRetry: controller.retryLoad,
                       )
                     : controller.isLoading.value
-                    ? const Padding(
+                    ? Padding(
                         padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
                         child: LinearProgressIndicator(
                           color: AppColors.primaryContainer,
@@ -107,7 +107,9 @@ class ProfileSetupView extends GetView<ProfileSetupViewModel> {
       Text(
         'You can adjust this profile anytime in family settings',
         textAlign: TextAlign.center,
-        style: AppTextStyles.labelSm.copyWith(color: AppColors.outline),
+        style: AppTextStyles.labelSm.copyWith(
+          color: AppColors.onSurfaceVariant,
+        ),
       ),
     ],
   );
@@ -159,7 +161,7 @@ class _Header extends StatelessWidget {
                             width: 44,
                             height: 44,
                           ),
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.arrow_back,
                             size: 24,
                             color: AppColors.onSurface,
@@ -171,11 +173,11 @@ class _Header extends StatelessWidget {
                     Container(
                       width: 32,
                       height: 32,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.primaryContainer,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.medication,
                         size: 18,
                         color: AppColors.onPrimary,
@@ -263,7 +265,7 @@ class _Stepper extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: ColoredBox(color: AppColors.surfaceContainerHigh),
                   ),
                 ],
@@ -295,11 +297,7 @@ class _Intro extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.spa,
-                  size: 16,
-                  color: AppColors.onPrimaryFixed,
-                ),
+                Icon(Icons.spa, size: 16, color: AppColors.onPrimaryFixed),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
@@ -464,12 +462,12 @@ class _AvatarPicker extends StatelessWidget {
                     child: Container(
                       width: 28,
                       height: 28,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.primaryContainer,
                         shape: BoxShape.circle,
                         boxShadow: AppTheme.shadowMd,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.photo_camera_outlined,
                         size: 16,
                         color: AppColors.onPrimary,
@@ -513,7 +511,7 @@ class _AvatarPicker extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(
+                      Icon(
                         Icons.chevron_right,
                         size: 16,
                         color: AppColors.primary,
@@ -577,7 +575,7 @@ class _Fields extends StatelessWidget {
                       child: DropdownButton<String>(
                         value: controller.relationship.value,
                         isExpanded: true,
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.arrow_drop_down,
                           size: 20,
                           color: AppColors.outline,
@@ -615,7 +613,7 @@ class _Fields extends StatelessWidget {
                   date == null ? 'mm/dd/yyyy' : _formatDate(date),
                   style: date == null
                       ? AppTextStyles.bodyLg.copyWith(
-                          color: AppColors.outline.withValues(alpha: 0.6),
+                          color: AppColors.onSurfaceVariant,
                         )
                       : ProfileFieldCard.inputStyle,
                 );
@@ -649,7 +647,7 @@ class _EmergencyContact extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.contact_emergency_outlined,
                 size: 20,
                 color: AppColors.secondary,
@@ -665,7 +663,9 @@ class _EmergencyContact extends StatelessWidget {
               ),
               Text(
                 'Optional',
-                style: AppTextStyles.labelSm.copyWith(color: AppColors.outline),
+                style: AppTextStyles.labelSm.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -726,7 +726,7 @@ class _InsetField extends StatelessWidget {
         border: InputBorder.none,
         hintText: hint,
         hintStyle: AppTextStyles.bodyMd.copyWith(
-          color: AppColors.outline.withValues(alpha: 0.6),
+          color: AppColors.onSurfaceVariant,
         ),
       ),
     );
@@ -735,6 +735,7 @@ class _InsetField extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,11 +784,11 @@ class _PrivacyPromise extends StatelessWidget {
             margin: const EdgeInsets.only(top: 2),
             width: 36,
             height: 36,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surfaceContainerHighest,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.verified_user,
               size: 20,
               color: AppColors.primary,
@@ -809,7 +810,7 @@ class _PrivacyPromise extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(Icons.lock, size: 16, color: AppColors.primary),
+                    Icon(Icons.lock, size: 16, color: AppColors.primary),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -850,11 +851,11 @@ class _NextStepBanner extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.secondaryContainer,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.notifications_active_outlined,
               size: 18,
               color: AppColors.onSecondaryContainer,
@@ -903,7 +904,7 @@ class _LoadErrorBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.cloud_off_outlined,
               size: 20,
               color: AppColors.onSecondaryFixedVariant,

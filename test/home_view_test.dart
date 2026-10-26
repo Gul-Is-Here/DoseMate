@@ -77,19 +77,19 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('header shows the active profile and follows a switch', (
+  testWidgets('top bar shows the active profile and follows a switch', (
     tester,
   ) async {
     await pump(tester, const Size(400, 900));
     expect(find.text('Eleanor Vance'), findsOneWidget);
-    expect(find.text('Eleanor (Self)'), findsOneWidget);
-    expect(find.textContaining(', Eleanor'), findsOneWidget);
+    // No greeting or role chip under the top bar.
+    expect(find.text('Hello there,'), findsNothing);
+    expect(find.textContaining('Good '), findsNothing);
+    expect(find.text('Eleanor (Self)'), findsNothing);
 
     await profiles.switchTo('p1');
     await tester.pump();
     expect(find.text('Arthur Vance'), findsOneWidget);
-    expect(find.text('Arthur (Spouse)'), findsOneWidget);
-    expect(find.textContaining(', Arthur'), findsOneWidget);
   });
 
   testWidgets('progress, next dose, timeline, refill and visit are real', (
@@ -98,13 +98,13 @@ void main() {
     await pump(tester, const Size(400, 2400));
     expect(find.text('1 of 3 doses taken today'), findsOneWidget);
     expect(find.text('Vitamin D3 logged at 9:08 AM'), findsOneWidget);
-    expect(find.text('Next Dose: 8:00 AM Today'), findsOneWidget);
+    expect(find.text('Next dose · 8:00 AM'), findsOneWidget);
     expect(find.text('Overdue'), findsWidgets);
-    expect(find.text('9:08 AM ✓'), findsOneWidget);
+    expect(find.text('Taken 9:08 AM'), findsOneWidget);
     expect(find.text('Due tonight'), findsOneWidget);
-    expect(find.text('3 Events'), findsOneWidget);
-    expect(find.text('Saturday, Oct 24 • Scheduled routines'), findsOneWidget);
-    expect(find.text('3 doses left'), findsOneWidget);
+    expect(find.text('3 scheduled doses'), findsOneWidget);
+    expect(find.text('SATURDAY, OCT 24'), findsOneWidget);
+    expect(find.textContaining('3 doses left ·'), findsOneWidget);
     expect(find.text('Dentist Checkup & Cleaning'), findsOneWidget);
     expect(find.text('Thursday • 3:30 PM'), findsOneWidget);
     expect(find.text('In 5 days'), findsOneWidget);
@@ -122,19 +122,21 @@ void main() {
     );
     // Only the 8 AM dose: the 8 PM one is now next.
     expect(find.text('Amoxicillin (8:00 AM) marked as skipped.'), findsOne);
-    expect(find.text('Next Dose: 8:00 PM Tonight'), findsOneWidget);
-    expect(find.text('Skipped'), findsOneWidget);
+    expect(find.text('Next dose · 8:00 PM'), findsOneWidget);
+    // The timeline tag and the Skipped count.
+    expect(find.text('Skipped'), findsNWidgets(2));
 
+    await tester.pumpAndSettle(); // the confirmation slides in
     await tester.tap(find.text('Undo'));
     await tester.pump();
     await tester.pump();
     expect(careStore.logsOf(uid, 'self'), hasLength(1));
-    expect(find.text('Next Dose: 8:00 AM Today'), findsOneWidget);
+    expect(find.text('Next dose · 8:00 AM'), findsOneWidget);
   });
 
   testWidgets('taking a dose lowers the supply once', (tester) async {
     await pump(tester, const Size(400, 2400));
-    await tester.tap(find.text('✓ Mark as Taken'));
+    await tester.tap(find.text('Mark as Taken'));
     await tester.pump();
     await tester.pump();
     expect(careStore.medicinesOf(uid, 'self')['amox']!.quantity, 2);

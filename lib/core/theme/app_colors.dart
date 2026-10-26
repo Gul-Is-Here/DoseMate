@@ -1,29 +1,87 @@
 import 'package:flutter/material.dart';
 
+import 'app_palette.dart';
+
+/// The app's colour roles, resolved from the active [AppPalette] (light or
+/// dark). These are getters, not constants: the theme can change while
+/// the app runs, and [ThemeController] rebuilds the tree when it does.
+///
+/// The Material-style names below are the ones the screens were built
+/// with; each maps onto one semantic token.
 abstract class AppColors {
-  static const primary = Color(0xFF005C55);
-  static const onPrimary = Color(0xFFFFFFFF);
-  static const primaryContainer = Color(0xFF0F766E);
-  static const primaryFixed = Color(0xFF9CF2E8);
-  static const onPrimaryFixedVariant = Color(0xFF00504A);
-  static const primaryFixedDim = Color(0xFF80D5CB);
-  static const onPrimaryFixed = Color(0xFF00201D);
-  static const secondary = Color(0xFF904D00);
-  static const secondaryContainer = Color(0xFFFE932C);
-  static const onSecondaryContainer = Color(0xFF663500);
-  static const onSecondaryFixedVariant = Color(0xFF6E3900);
-  static const secondaryFixed = Color(0xFFFFDCC3);
-  static const onSecondaryFixed = Color(0xFF2F1500);
-  static const surface = Color(0xFFF9F9FF);
-  static const surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const surfaceContainerLow = Color(0xFFF0F3FF);
-  static const surfaceContainer = Color(0xFFE7EEFF);
-  static const surfaceContainerHigh = Color(0xFFDEE8FF);
-  static const surfaceContainerHighest = Color(0xFFD5E3FF);
-  static const onSurface = Color(0xFF0C1C32);
-  static const onSurfaceVariant = Color(0xFF3E4947);
-  static const inverseSurface = Color(0xFF223148);
-  static const onBackground = Color(0xFF0C1C32);
-  static const outline = Color(0xFF6E7977);
-  static const outlineVariant = Color(0xFFBDC9C6);
+  static AppPalette get _p => AppPalette.current;
+
+  // Semantic tokens.
+
+  static Color get background => _p.background;
+  static Color get card => _p.card;
+  static Color get elevated => _p.elevated;
+  static Color get textPrimary => _p.textPrimary;
+  static Color get textSecondary => _p.textSecondary;
+  static Color get divider => _p.divider;
+  static Color get inputOutline => _p.inputOutline;
+  static Color get selected => _p.selected;
+  static Color get onSelected => _p.onSelected;
+
+  /// Taken / success.
+  static Color get success => _p.success;
+  static Color get successContainer => _p.successContainer;
+
+  /// Due / attention: low supply, coming up, appointments.
+  static Color get attention => _p.attention;
+  static Color get attentionContainer => _p.attentionContainer;
+
+  /// Overdue / error and destructive actions.
+  static Color get error => _p.error;
+  static Color get onError => _p.onError;
+  static Color get errorContainer => _p.errorContainer;
+
+  /// Skipped / neutral.
+  static Color get neutral => _p.neutral;
+  static Color get neutralContainer => _p.neutralContainer;
+
+  /// Soft drop shadows: barely there on dark surfaces.
+  static Color get shadow =>
+      _p.isDark ? const Color(0x66000000) : const Color(0x14191B2A);
+
+  // Material-style roles.
+
+  static Color get primary => _p.primary;
+  static Color get onPrimary => _p.onPrimary;
+
+  /// Solid accents (active strips, the main floating button): indigo.
+  static Color get primaryContainer => _p.primary;
+  static Color get onPrimaryContainer => _p.onPrimary;
+
+  /// Selected and highlighted backgrounds.
+  static Color get primaryFixed => _p.selected;
+  static Color get primaryFixedDim => _p.selected;
+  static Color get onPrimaryFixed => _p.onSelected;
+  static Color get onPrimaryFixedVariant => _p.onSelected;
+
+  /// Attention accents (low supply, appointments, overdue strips).
+  static Color get secondary => _p.attention;
+  static Color get secondaryContainer => _p.attention;
+  static Color get onSecondaryContainer => _p.attentionContainer;
+  static Color get secondaryFixed => _p.attentionContainer;
+  static Color get onSecondaryFixed => _p.attention;
+  static Color get onSecondaryFixedVariant => _p.attention;
+
+  static Color get surface => _p.background;
+  static Color get surfaceContainerLowest => _p.card;
+  static Color get surfaceContainerLow => _p.elevated;
+  static Color get surfaceContainer => _p.elevated;
+  static Color get surfaceContainerHigh => _p.divider;
+  static Color get surfaceContainerHighest => _p.divider;
+
+  static Color get onSurface => _p.textPrimary;
+  static Color get onBackground => _p.textPrimary;
+  static Color get onSurfaceVariant => _p.textSecondary;
+  static Color get outline => _p.inputOutline;
+  static Color get outlineVariant => _p.divider;
+
+  static Color get inverseSurface => _p.inverseSurface;
+  static Color get inverseOnSurface => _p.onInverseSurface;
+  static Color get inversePrimary =>
+      _p.isDark ? AppPalette.light.primary : AppPalette.dark.primary;
 }

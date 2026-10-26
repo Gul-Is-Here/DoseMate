@@ -41,26 +41,126 @@ service cloud.firestore {
           allow delete: if isOwner(uid);
         }
 
+        // Caregivers granted "Manage appointment schedule" may read, add
+        // and reschedule visits, but not delete them.
         match /visits/{visitId} {
-          allow read: if isOwner(uid);
-          allow create: if isOwner(uid)
+          allow read: if isOwner(uid)
+            || isMember(uid, profileId, 'appointments');
+          allow create: if (isOwner(uid)
+              || isMember(uid, profileId, 'appointments'))
             && profileExists(uid, profileId)
             && validVisit(request.resource.data)
             && request.resource.data.createdAt == request.time;
-          allow update: if isOwner(uid)
+          allow update: if (isOwner(uid)
+              || isMember(uid, profileId, 'appointments'))
             && validVisit(request.resource.data)
             && request.resource.data.createdAt == resource.data.createdAt;
           allow delete: if isOwner(uid);
         }
 
+        // A dose snoozed from its alarm (id: the dose log id), so the
+        // server's "not logged yet" follow-up waits. Owner only; at most a
+        // couple of hours ahead.
+        match /doseSnoozes/{logId} {
+          allow read, delete: if isOwner(uid);
+          allow create, update: if isOwner(uid)
+            && request.resource.data.keys().hasOnly(['until'])
+            && request.resource.data.until is timestamp
+            && request.resource.data.until > request.time
+            && request.resource.data.until < request.time + duration.value(2, 'h');
+        }
+
         // One log per scheduled dose: the id is medicineId_day_minutes.
+        // Each write carries the tap's revision: only a newer one, or a
+        // retry of the same tap, is accepted. stockApplied is written only
+        // by the applyDoseStock function.
         match /doseLogs/{logId} {
           allow read: if isOwner(uid);
-          allow create, update: if isOwner(uid)
-            && validDoseLog(logId, request.resource.data);
+          allow create: if isOwner(uid)
+            && validDoseLog(logId, request.resource.data)
+            && request.resource.data.status in ['taken', 'skipped']
+            && !('stockApplied' in request.resource.data)
+            && !('legacyBase' in request.resource.data);
+          allow update: if isOwner(uid)
+            && validDoseLog(logId, request.resource.data)
+            && (request.resource.data.rev > resource.data.get('rev', 0)
+                || (request.resource.data.rev == resource.data.get('rev', 0)
+                    && request.resource.data.actionId == resource.data.get('actionId', null)))
+            && request.resource.data.get('stockApplied', null)
+                == resource.data.get('stockApplied', null)
+            // legacyBase: set once, by the first write over a Taken log from
+            // before revisions (whose supply was already adjusted).
+            && (request.resource.data.get('legacyBase', null)
+                    == resource.data.get('legacyBase', null)
+                || (!('rev' in resource.data)
+                    && resource.data.status == 'taken'
+                    && !('legacyBase' in resource.data)
+                    && request.resource.data.legacyBase == 'taken'));
           allow delete: if isOwner(uid);
         }
+
+        // Care circle. Members and their permissions are written only by
+        // Cloud Functions (invite acceptance, owner changes), so nobody can
+        // grant themselves access or widen it.
+        match /members/{memberUid} {
+          allow read: if isOwner(uid) || isSignedInAs(memberUid);
+          allow write: if false;
+        }
+
+        // Caregiver-safe copies (no dosage, notes or photos), maintained by
+        // Cloud Functions for "View daily dose checklist".
+        match /shareChecklist/{medicineId} {
+          allow read: if isOwner(uid) || isMember(uid, profileId, 'checklist');
+          allow write: if false;
+        }
+        match /shareLogs/{logId} {
+          allow read: if isOwner(uid) || isMember(uid, profileId, 'checklist');
+          allow write: if false;
+        }
       }
+
+      // This account's devices, for its own alerts. The id is the device's
+      // FCM token; only the signed-in owner can register or remove one.
+      match /devices/{token} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['token', 'platform', 'timezone', 'updatedAt'])
+          && request.resource.data.token == token
+          && token.size() > 0 && token.size() <= 4096
+          && request.resource.data.platform in ['android', 'ios']
+          && request.resource.data.timezone is string
+          && request.resource.data.timezone.size() <= 64
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      // Profiles other accounts shared with this one (written on accept).
+      match /sharedProfiles/{shareId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+    }
+
+    // Invitations: created, sent and changed only by Cloud Functions; the
+    // sender can watch their status. Token hashes never leave the server
+    // through the client: the owner reads them, but they can't be reversed.
+    match /invitations/{inviteId} {
+      allow read: if request.auth != null
+        && request.auth.token.email_verified == true
+        && resource.data.ownerUid == request.auth.uid;
+      allow write: if false;
+    }
+
+    function isSignedInAs(memberUid) {
+      return request.auth != null && request.auth.uid == memberUid
+        && request.auth.token.email_verified == true;
+    }
+
+    function isMember(uid, profileId, permission) {
+      let path = /databases/$(database)/documents/users/$(uid)/profiles/$(profileId)/members/$(request.auth.uid);
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(path)
+        && get(path).data.permissions[permission] == true;
     }
 
     function profileExists(uid, profileId) {
@@ -75,7 +175,11 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'name', 'dosage', 'notes', 'frequency', 'doseMinutes', 'days',
           'startDay', 'endDay', 'quantity', 'lowSupplyWarning', 'status',
-          'photoUrl', 'photoPath', 'createdAt', 'updatedAt'])
+          'photoUrl', 'photoPath', 'pastSchedules', 'pauses',
+          'createdAt', 'updatedAt'])
+        && (!('pastSchedules' in data)
+            || (data.pastSchedules is list && data.pastSchedules.size() <= 30))
+        && (!('pauses' in data) || (data.pauses is list && data.pauses.size() <= 30))
         && data.keys().hasAll([
           'name', 'frequency', 'doseMinutes', 'startDay', 'endDay',
           'quantity', 'status'])
@@ -131,18 +235,33 @@ service cloud.firestore {
     }
 
     function validDoseLog(logId, data) {
-      return data.keys().hasOnly(['medicineId', 'day', 'minutes', 'status', 'loggedAt'])
+      return data.keys().hasOnly(['medicineId', 'day', 'minutes', 'status', 'loggedAt', 'note',
+          'medicineName', 'dosage', 'rev', 'actionId', 'actedAt', 'utcOffset', 'stockApplied',
+          'legacyBase'])
+        && data.rev is int && data.rev > 0
+        // A device clock may run a little fast, not far enough to lock out others.
+        && data.rev <= request.time.toMillis() + 300000
+        && data.actionId is string && data.actionId.size() > 0 && data.actionId.size() <= 40
+        && data.actedAt is timestamp
+        && data.utcOffset is int && data.utcOffset >= -900 && data.utcOffset <= 900
+        && optionalString(data, 'note', 200)
+        // Snapshot of the medicine when logged, for history.
+        && optionalString(data, 'medicineName', 100)
+        && optionalString(data, 'dosage', 100)
         && data.medicineId is string && data.medicineId.size() > 0
         && data.medicineId.size() <= 64
         && isDay(data.day)
         && data.minutes is int && data.minutes >= 0 && data.minutes < 1440
         && logId == data.medicineId + '_' + data.day + '_' + string(data.minutes)
-        && data.status in ['taken', 'skipped']
+        && data.status in ['taken', 'skipped', 'cleared']
         && data.loggedAt == request.time;
     }
 
+    // Signed in as this account with a verified email. Google accounts are
+    // verified by Google; email/password accounts must open the link first.
     function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
+      return request.auth != null && request.auth.uid == uid
+        && request.auth.token.email_verified == true;
     }
 
     function optionalString(data, field, maxLength) {

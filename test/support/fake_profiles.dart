@@ -39,6 +39,34 @@ class FakeProfiles implements ProfileRepository {
 
   void _emit(String uid) => _streams[uid]?.add(profilesOf(uid).values.toList());
 
+  /// uid → profiles shared with that account.
+  final sharedStore = <String, List<UserProfile>>{};
+  final _sharedStreams = <String, StreamController<List<UserProfile>>>{};
+
+  /// Shares [profile] with [uid] (as accepting an invitation does).
+  void share(String uid, UserProfile profile) {
+    final list = sharedStore.putIfAbsent(uid, () => [])
+      ..removeWhere((p) => p.id == profile.id)
+      ..add(profile);
+    _sharedStreams[uid]?.add(List.of(list));
+  }
+
+  void unshare(String uid, String id) {
+    final list = sharedStore.putIfAbsent(uid, () => [])
+      ..removeWhere((p) => p.id == id);
+    _sharedStreams[uid]?.add(List.of(list));
+  }
+
+  @override
+  Stream<List<UserProfile>> watchSharedProfiles(String uid) {
+    final controller = _sharedStreams[uid] =
+        StreamController<List<UserProfile>>(
+          onListen: () =>
+              _sharedStreams[uid]?.add(List.of(sharedStore[uid] ?? const [])),
+        );
+    return controller.stream;
+  }
+
   @override
   Stream<List<UserProfile>> watchProfiles(String uid) {
     final controller = _streams[uid] = StreamController<List<UserProfile>>(

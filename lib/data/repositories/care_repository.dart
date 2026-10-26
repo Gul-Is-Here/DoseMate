@@ -23,6 +23,49 @@ class CareFailure implements Exception {
   String toString() => 'CareFailure($code): $message';
 }
 
+/// What Log History lists: logs of local days in [from, to), optionally
+/// one medicine and one status, newest or oldest first.
+class HistoryQuery {
+  const HistoryQuery({
+    required this.from,
+    required this.to,
+    this.medicineId,
+    this.status,
+    this.newestFirst = true,
+  });
+
+  final DateTime from;
+  final DateTime to;
+  final String? medicineId;
+  final DoseStatus? status;
+  final bool newestFirst;
+
+  /// Query order: day, then scheduled minute, then id, so equal times are
+  /// still ordered the same way on every load.
+  int compare(DoseLog a, DoseLog b) {
+    var c = a.day.compareTo(b.day);
+    if (c == 0) c = a.minutes.compareTo(b.minutes);
+    if (c == 0) c = a.id.compareTo(b.id);
+    return newestFirst ? -c : c;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is HistoryQuery &&
+      other.from == from &&
+      other.to == to &&
+      other.medicineId == medicineId &&
+      other.status == status &&
+      other.newestFirst == newestFirst;
+
+  @override
+  int get hashCode => Object.hash(from, to, medicineId, status, newestFirst);
+}
+
+/// One page of history; [fromCache] when Firestore answered offline, so a
+/// short page does not prove the end was reached.
+typedef HistoryPage = ({List<DoseLog> logs, bool fromCache});
+
 /// How far a write got: confirmed by the server, or saved on this device
 /// and waiting to sync (offline or slow network).
 enum WriteResult { confirmed, pending }
@@ -42,6 +85,9 @@ class CareRepository {
   static const visitsLimit = 20;
   static const logsLimit = 1000;
 
+  /// Most visits one calendar week can hold.
+  static const rangeVisitsLimit = 100;
+
   /// Days of dose history kept live (for streaks and recent logs).
   static const historyDays = 30;
 
@@ -59,8 +105,11 @@ class CareRepository {
   CollectionReference<Map<String, dynamic>> _visits(String uid, String pid) =>
       _profile(uid, pid).collection('visits');
 
-  CollectionReference<Map<String, dynamic>> _logs(String uid, String pid) =>
-      _profile(uid, pid).collection('doseLogs');
+  CollectionReference<Map<String, dynamic>> _logs(
+    String uid,
+    String pid, {
+    bool shared = false,
+  }) => _profile(uid, pid).collection(shared ? 'shareLogs' : 'doseLogs');
 
   String newMedicineId(String uid, String pid) => _medicines(uid, pid).doc().id;
 
@@ -68,8 +117,19 @@ class CareRepository {
 
   // Live queries.
 
-  Stream<List<Medicine>> watchMedicines(String uid, String pid) =>
-      _watch(_medicines(uid, pid).limit(medicinesLimit), Medicine.fromMap);
+  /// [shared] reads the caregiver-safe copies (no dosage, notes or photos)
+  /// of a profile another account shared.
+  Stream<List<Medicine>> watchMedicines(
+    String uid,
+    String pid, {
+    bool shared = false,
+  }) => _watch(
+    _profile(
+      uid,
+      pid,
+    ).collection(shared ? 'shareChecklist' : 'medicines').limit(medicinesLimit),
+    Medicine.fromMap,
+  );
 
   /// Scheduled visits from [from] on, soonest first.
   Stream<List<Visit>> watchUpcomingVisits(
@@ -85,15 +145,129 @@ class CareRepository {
     Visit.fromMap,
   );
 
-  /// Dose logs from local day [since] on.
-  Stream<List<DoseLog>> watchLogs(String uid, String pid, DateTime since) =>
+  /// Scheduled visits starting in [from, to), soonest first. Uses the same
+  /// (status, startsAt) index as [watchUpcomingVisits].
+  Stream<List<Visit>> watchVisitsBetween(
+    String uid,
+    String pid,
+    DateTime from,
+    DateTime to,
+  ) => _watch(
+    _visits(uid, pid)
+        .where('status', isEqualTo: VisitStatus.scheduled.name)
+        .where('startsAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+        .where('startsAt', isLessThan: Timestamp.fromDate(to))
+        .orderBy('startsAt')
+        .limit(rangeVisitsLimit),
+    Visit.fromMap,
+  );
+
+  /// Dose logs of local days in [from, to).
+  Stream<List<DoseLog>> watchLogsBetween(
+    String uid,
+    String pid,
+    DateTime from,
+    DateTime to, {
+    bool shared = false,
+  }) => _watchLogs(
+    _logs(uid, pid, shared: shared)
+        .where('day', isGreaterThanOrEqualTo: CareDates.dayKey(from))
+        .where('day', isLessThan: CareDates.dayKey(to))
+        .limit(logsLimit),
+  );
+
+  /// Dose logs from local day [since] on. [includeCleared] also returns
+  /// undone logs (with [DoseLog.isUndone]) so their revisions are known.
+  Stream<List<DoseLog>> watchLogs(
+    String uid,
+    String pid,
+    DateTime since, {
+    bool shared = false,
+    bool includeCleared = false,
+  }) => _watchLogs(
+    _logs(uid, pid, shared: shared)
+        .where('day', isGreaterThanOrEqualTo: CareDates.dayKey(since))
+        .limit(logsLimit),
+    includeCleared: includeCleared,
+  );
+
+  Stream<List<DoseLog>> _watchLogs(
+    Query<Map<String, dynamic>> query, {
+    bool includeCleared = false,
+  }) =>
       _watch(
-        _logs(uid, pid)
-            .where('day', isGreaterThanOrEqualTo: CareDates.dayKey(since))
-            .limit(logsLimit),
+        query,
         (_, data, {isPending = false}) =>
             DoseLog.fromMap(data, isPending: isPending),
+      ).map(
+        (logs) =>
+            includeCleared ? logs : logs.where((l) => !l.isUndone).toList(),
       );
+
+  Query<Map<String, dynamic>> _history(
+    String uid,
+    String pid,
+    HistoryQuery q, {
+    bool shared = false,
+  }) {
+    var query = _logs(uid, pid, shared: shared)
+        .where('day', isGreaterThanOrEqualTo: CareDates.dayKey(q.from))
+        .where('day', isLessThan: CareDates.dayKey(q.to));
+    if (q.medicineId case final id?) {
+      query = query.where('medicineId', isEqualTo: id);
+    }
+    // Undone logs are kept as records but never listed.
+    query = switch (q.status) {
+      final status? => query.where('status', isEqualTo: status.name),
+      null => query.where(
+        'status',
+        whereIn: [DoseStatus.taken.name, DoseStatus.skipped.name],
+      ),
+    };
+    final desc = q.newestFirst;
+    return query
+        .orderBy('day', descending: desc)
+        .orderBy('minutes', descending: desc)
+        .orderBy(FieldPath.documentId, descending: desc);
+  }
+
+  /// The first [limit] logs of [q], live.
+  Stream<List<DoseLog>> watchHistoryHead(
+    String uid,
+    String pid,
+    HistoryQuery q,
+    int limit, {
+    bool shared = false,
+  }) => _watchLogs(_history(uid, pid, q, shared: shared).limit(limit));
+
+  /// The [limit] logs of [q] after [after], read once.
+  Future<HistoryPage> fetchHistoryPage(
+    String uid,
+    String pid,
+    HistoryQuery q, {
+    required DoseLog after,
+    required int limit,
+    bool shared = false,
+  }) async {
+    try {
+      final snapshot = await _history(uid, pid, q, shared: shared)
+          .startAfter([CareDates.dayKey(after.day), after.minutes, after.id])
+          .limit(limit)
+          .get();
+      return (
+        logs: [
+          for (final doc in snapshot.docs)
+            DoseLog.fromMap(
+              doc.data(),
+              isPending: doc.metadata.hasPendingWrites,
+            ),
+        ],
+        fromCache: snapshot.metadata.isFromCache,
+      );
+    } on FirebaseException catch (e) {
+      throw _failure(_Op.load, e);
+    }
+  }
 
   Stream<List<T>> _watch<T>(
     Query<Map<String, dynamic>> query,
@@ -130,15 +304,16 @@ class CareRepository {
     }, SetOptions(merge: true)),
   );
 
+  /// Saves [medicine]'s status with the pauses that record it.
   Future<WriteResult> setMedicineStatus(
     String uid,
     String pid,
-    String id,
-    MedicineStatus status,
+    Medicine medicine,
   ) => _write(
     _Op.save,
-    () => _medicines(uid, pid).doc(id).update({
-      'status': status.name,
+    () => _medicines(uid, pid).doc(medicine.id).update({
+      'status': medicine.status.name,
+      'pauses': [for (final p in medicine.pauses) p.toMap()],
       'updatedAt': FieldValue.serverTimestamp(),
     }),
   );
@@ -160,59 +335,140 @@ class CareRepository {
     String pid,
     String id, {
     Iterable<String> logIds = const [],
-  }) => _write(_Op.delete, () {
-    final batch = _firestore.batch()..delete(_medicines(uid, pid).doc(id));
-    for (final logId in logIds.take(400)) {
-      batch.delete(_logs(uid, pid).doc(logId));
+  }) => _write(_Op.delete, () async {
+    // Every log of the medicine, undone ones included, not only those
+    // loaded. Offline, the known ids are deleted and the rest stay.
+    final ids = {...logIds};
+    try {
+      final all = await _logs(
+        uid,
+        pid,
+      ).where('medicineId', isEqualTo: id).get().timeout(confirmTimeout);
+      ids.addAll(all.docs.map((d) => d.id));
+    } on Exception catch (_) {}
+    // Logs first, the medicine last, so a failure leaves no orphans.
+    final list = ids.toList();
+    for (var i = 0; i < list.length; i += 450) {
+      final batch = _firestore.batch();
+      for (final logId in list.skip(i).take(450)) {
+        batch.delete(_logs(uid, pid).doc(logId));
+      }
+      await batch.commit();
     }
-    return batch.commit();
+    await _medicines(uid, pid).doc(id).delete();
   });
 
   // Dose logs.
 
-  /// Records Taken/Skipped for one occurrence and adjusts the supply in the
-  /// same batch: [supplyChange] is -1 when a dose becomes taken, +1 when a
-  /// taken dose is changed or undone. The log id is per occurrence, so a
-  /// repeated write can't create a second log.
+  /// Records Taken/Skipped for one occurrence as [action]. The log id is
+  /// per occurrence, so a dose has one log; its revision makes the server
+  /// refuse a write older than the one it has, and accept a retry of the
+  /// same write unchanged. The supply is adjusted by the server from the
+  /// log (see `applyDoseStock`), so repeated or late writes can't count a
+  /// dose twice.
   Future<WriteResult> logDose(
     String uid,
     String pid,
     DoseOccurrence occurrence,
     DoseStatus status, {
-    int supplyChange = 0,
-  }) => _write(_Op.save, () {
-    final batch = _firestore.batch()
-      ..set(_logs(uid, pid).doc(occurrence.logId), {
-        'medicineId': occurrence.medicine.id,
-        'day': CareDates.dayKey(occurrence.day),
-        'minutes': occurrence.minutes,
-        'status': status.name,
-        'loggedAt': FieldValue.serverTimestamp(),
-      });
-    if (supplyChange != 0) {
-      batch.update(_medicines(uid, pid).doc(occurrence.medicine.id), {
-        'quantity': FieldValue.increment(supplyChange),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    }
-    return batch.commit();
-  });
+    required DoseTap action,
+    String? note,
+    bool replacesLegacyTaken = false,
+  }) => _dose(
+    action,
+    (action) => _logs(uid, pid).doc(occurrence.logId).set({
+      ..._actionFields(
+        occurrence.medicine.id,
+        occurrence.day,
+        occurrence.minutes,
+        status.name,
+        action,
+      ),
+      if (replacesLegacyTaken) ..._legacyTaken,
+      'note': note != null && note.isNotEmpty ? note : FieldValue.delete(),
+      'medicineName': _clip(occurrence.medicine.name),
+      'dosage': occurrence.medicine.dosage.isNotEmpty
+          ? _clip(occurrence.medicine.dosage)
+          : FieldValue.delete(),
+    }, SetOptions(merge: true)),
+  );
 
+  static String _clip(String s) => s.length <= 100 ? s : s.substring(0, 100);
+
+  /// Undoes [log] as [action]. The log is kept as an undone record, so an
+  /// older Taken from another device can't bring it back.
   Future<WriteResult> undoDose(
     String uid,
     String pid,
     DoseLog log, {
-    int supplyChange = 0,
-  }) => _write(_Op.save, () {
-    final batch = _firestore.batch()..delete(_logs(uid, pid).doc(log.id));
-    if (supplyChange != 0) {
-      batch.update(_medicines(uid, pid).doc(log.medicineId), {
-        'quantity': FieldValue.increment(supplyChange),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+    required DoseTap action,
+  }) => _dose(
+    action,
+    (action) => _logs(uid, pid).doc(log.id).set({
+      ..._actionFields(
+        log.medicineId,
+        log.day,
+        log.minutes,
+        DoseLog.cleared,
+        action,
+      ),
+      'note': FieldValue.delete(),
+    }, SetOptions(merge: true)),
+  );
+
+  /// Records that the dose [logId] is snoozed until [until], so the
+  /// server's "not logged yet" follow-up waits for it.
+  Future<WriteResult> snoozeDose(
+    String uid,
+    String pid,
+    String logId,
+    DateTime until,
+  ) => _write(
+    _Op.dose,
+    () => _profile(uid, pid).collection('doseSnoozes').doc(logId).set({
+      'until': Timestamp.fromDate(until),
+    }),
+  );
+
+  /// Writes a dose tap. Refused, it's retried once with
+  /// [DoseTap.clockSafe]: a device whose clock runs fast still logs, while
+  /// a newer tap from another device still wins.
+  Future<WriteResult> _dose(
+    DoseTap action,
+    Future<void> Function(DoseTap action) write,
+  ) async {
+    try {
+      return await _write(_Op.dose, () => write(action));
+    } on CareFailure catch (e) {
+      final retry = action.clockSafe;
+      if (e.code != 'permission-denied' || retry == null) rethrow;
+      return _write(_Op.dose, () => write(retry));
     }
-    return batch.commit();
-  });
+  }
+
+  /// Marks the first write over a Taken log from an app version without
+  /// revisions, which took its dose from the supply itself: the server
+  /// counts it as already applied, whatever order its events run in.
+  static const _legacyTaken = {'legacyBase': 'taken'};
+
+  static Map<String, Object> _actionFields(
+    String medicineId,
+    DateTime day,
+    int minutes,
+    String status,
+    DoseTap action,
+  ) => {
+    'medicineId': medicineId,
+    'day': CareDates.dayKey(day),
+    'minutes': minutes,
+    'status': status,
+    'rev': action.rev,
+    'actionId': action.id,
+    'actedAt': Timestamp.fromDate(action.at),
+    // Offset of the device's zone at the tap, for reading history later.
+    'utcOffset': action.at.timeZoneOffset.inMinutes,
+    'loggedAt': FieldValue.serverTimestamp(),
+  };
 
   // Visits.
 
@@ -308,17 +564,19 @@ class CareRepository {
   static String _messageFor(_Op op, String code) => switch (code) {
     'unavailable' || 'retry-limit-exceeded' =>
       "You're offline. Check your connection and try again.",
+    'permission-denied' when op == _Op.dose =>
+      'This dose was updated on another device. Showing the latest.',
     'permission-denied' || 'unauthorized' || 'unauthenticated' =>
       "You don't have permission to change this. Sign in again and retry.",
     'not-found' => 'This record no longer exists.',
     'failed-precondition' => 'This list needs a database update before it can load. Please try again later.',
     _ => switch (op) {
       _Op.load => 'Could not load your schedule. Please try again.',
-      _Op.save => 'Could not save your changes. Please try again.',
+      _Op.save || _Op.dose => 'Could not save your changes. Please try again.',
       _Op.delete => 'Could not delete this. Please try again.',
       _Op.upload => 'Could not upload your photo. Please try again.',
     },
   };
 }
 
-enum _Op { load, save, delete, upload }
+enum _Op { load, save, dose, delete, upload }

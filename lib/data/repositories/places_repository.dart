@@ -8,15 +8,55 @@ import 'package:http/http.dart' as http;
 
 import '../../core/config/app_config.dart';
 
+/// Why a Places request failed, for what the UI offers next.
+enum PlacesErrorKind {
+  /// No connection, or no answer in time. Worth retrying.
+  network,
+
+  /// The key was rejected: invalid, or not allowed for this app build.
+  auth,
+
+  /// Too many requests for now. Worth retrying a little later.
+  quota,
+
+  /// Not set up: no key in this build, the API or billing turned off, or
+  /// the key not allowed to use Places API (New).
+  config,
+
+  /// Google's side failed or the reply was unusable. Worth retrying.
+  server,
+
+  /// The chosen place can't be used (it has no map location).
+  unusable,
+}
+
 /// A user-facing Places error. [message] is safe to show in the UI.
 class PlacesFailure implements Exception {
-  const PlacesFailure(this.message, {this.code});
+  const PlacesFailure(
+    this.message, {
+    this.code,
+    this.kind = PlacesErrorKind.server,
+  });
 
   final String message;
+
+  /// The API's status or reason code, for logs and tests; never shown.
   final String? code;
+  final PlacesErrorKind kind;
+
+  /// Repeating the same request may succeed. Setup and key problems need
+  /// a fix outside the app, so a retry would only fail again.
+  bool get retryable => switch (kind) {
+    PlacesErrorKind.network ||
+    PlacesErrorKind.quota ||
+    PlacesErrorKind.server => true,
+    PlacesErrorKind.auth ||
+    PlacesErrorKind.config ||
+    PlacesErrorKind.unusable => false,
+  };
 
   @override
-  String toString() => 'PlacesFailure($code): $message';
+  String toString() => 'PlacesFailure(${kind.name}, $code): $message';
 }
 
 /// One autocomplete suggestion.
@@ -57,10 +97,9 @@ class PlaceDetails {
 /// autocomplete requests and the details request that ends it, so the
 /// session is billed once.
 class PlacesRepository {
-  PlacesRepository({
-    http.Client? client,
-    this.apiKey = AppConfig.googleMapsApiKey,
-  }) : _client = client ?? http.Client();
+  PlacesRepository({http.Client? client, String? apiKey})
+    : _client = client ?? http.Client(),
+      apiKey = apiKey ?? AppConfig.placesApiKey;
 
   final http.Client _client;
   final String apiKey;
@@ -137,6 +176,7 @@ class PlacesRepository {
       throw const PlacesFailure(
         'That place has no map location. Choose another suggestion.',
         code: 'no-location',
+        kind: PlacesErrorKind.unusable,
       );
     }
     final address = data['formattedAddress'] as String? ?? '';
@@ -155,8 +195,10 @@ class PlacesRepository {
   Future<Map<String, dynamic>> _send(http.Request request) async {
     if (!isConfigured) {
       throw const PlacesFailure(
-        'Address search isn’t set up. You can still type the address.',
+        'Address search isn’t set up in this version of the app. You can '
+        'still type the address.',
         code: 'no-key',
+        kind: PlacesErrorKind.config,
       );
     }
     request.headers.addAll({'X-Goog-Api-Key': apiKey, ..._appHeaders()});
@@ -167,13 +209,17 @@ class PlacesRepository {
       );
     } on TimeoutException {
       throw const PlacesFailure(
-        'Address search is taking too long. Check your connection.',
+        'Address search is taking too long. Check your connection and try '
+        'again.',
         code: 'timeout',
+        kind: PlacesErrorKind.network,
       );
     } on Exception {
       throw const PlacesFailure(
-        "You're offline. You can still type the address.",
+        "You're offline. Check your connection and try again, or type the "
+        'address.',
         code: 'network',
+        kind: PlacesErrorKind.network,
       );
     }
     Map<String, dynamic> body;
@@ -183,15 +229,86 @@ class PlacesRepository {
       body = const {};
     }
     if (response.statusCode == 200) return body;
-    final status = (body['error'] as Map?)?['status'] as String?;
-    // Status codes only; never the key or the user's input.
-    if (kDebugMode) debugPrint('Places error ${response.statusCode} $status');
-    throw PlacesFailure(switch (response.statusCode) {
-      403 || 401 => 'Address search isn’t available right now.',
-      429 => 'Too many searches. Wait a moment and try again.',
-      _ => 'Address search failed. Try again or type the address.',
-    }, code: status ?? '${response.statusCode}');
+    final error = body['error'] is Map ? body['error'] as Map : const {};
+    final status = error['status'] is String ? error['status'] as String : null;
+    final reason = _reason(error);
+    // Codes only; never the key, the message or the user's input.
+    if (kDebugMode) {
+      debugPrint('Places error ${response.statusCode} $status $reason');
+    }
+    final kind = classify(response.statusCode, status, reason);
+    throw PlacesFailure(
+      _messages[kind]!,
+      code: reason ?? status ?? '${response.statusCode}',
+      kind: kind,
+    );
   }
+
+  /// The ErrorInfo reason, e.g. SERVICE_DISABLED or API_KEY_INVALID.
+  static String? _reason(Map error) {
+    for (final d in error['details'] as List? ?? const []) {
+      if (d is Map && d['reason'] is String) return d['reason'] as String;
+    }
+    return null;
+  }
+
+  /// Sorts an error reply by what fixes it.
+  @visibleForTesting
+  static PlacesErrorKind classify(
+    int statusCode,
+    String? status,
+    String? reason,
+  ) {
+    switch (reason) {
+      case 'SERVICE_DISABLED' ||
+          'API_KEY_SERVICE_BLOCKED' ||
+          'BILLING_DISABLED' ||
+          'CONSUMER_INVALID' ||
+          'ACCESS_TOKEN_SCOPE_INSUFFICIENT':
+        return PlacesErrorKind.config;
+      case 'API_KEY_INVALID' ||
+          'API_KEY_EXPIRED' ||
+          'API_KEY_ANDROID_APP_BLOCKED' ||
+          'API_KEY_IOS_APP_BLOCKED' ||
+          'API_KEY_HTTP_REFERRER_BLOCKED' ||
+          'API_KEY_IP_ADDRESS_BLOCKED':
+        return PlacesErrorKind.auth;
+      case 'RATE_LIMIT_EXCEEDED' || 'RESOURCE_EXHAUSTED':
+        return PlacesErrorKind.quota;
+    }
+    if (statusCode == 429 || status == 'RESOURCE_EXHAUSTED') {
+      return PlacesErrorKind.quota;
+    }
+    if (statusCode == 401 || status == 'UNAUTHENTICATED') {
+      return PlacesErrorKind.auth;
+    }
+    // An invalid key comes back as 400 INVALID_ARGUMENT.
+    if (statusCode == 403 || status == 'PERMISSION_DENIED') {
+      return PlacesErrorKind.config;
+    }
+    return PlacesErrorKind.server;
+  }
+
+  static const _messages = {
+    PlacesErrorKind.network:
+        "You're offline. Check your connection and try "
+        'again, or type the address.',
+    PlacesErrorKind.auth:
+        'This version of the app isn’t allowed to use '
+        'address search. You can still type the address.',
+    PlacesErrorKind.quota:
+        'Too many address searches right now. Wait a '
+        'moment and try again.',
+    PlacesErrorKind.config:
+        'Address search isn’t set up yet. You can still '
+        'type the address.',
+    PlacesErrorKind.server:
+        'Address search had a problem. Try again, or type '
+        'the address.',
+    PlacesErrorKind.unusable:
+        'That place can’t be used. Choose another '
+        'suggestion.',
+  };
 
   /// Identify the app so a key with Android/iOS app restrictions accepts
   /// these REST calls.

@@ -9,6 +9,8 @@ import '../data/repositories/profile_repository.dart';
 import '../data/services/profile_service.dart';
 import '../modules/profile_setup/view_model/profile_setup_view_model.dart';
 import 'profile_avatar.dart';
+import 'skeleton.dart';
+import 'app_snackbar.dart';
 
 /// Lists the account's profiles, shows which is active, and lets the user
 /// switch, edit or add one.
@@ -18,7 +20,7 @@ class ProfileSwitcherSheet extends StatelessWidget {
   static Future<void> show() => Get.bottomSheet(
     const ProfileSwitcherSheet(),
     isScrollControlled: true,
-    backgroundColor: AppColors.surface,
+    backgroundColor: AppColors.surfaceContainerLowest,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
     ),
@@ -31,7 +33,7 @@ class ProfileSwitcherSheet extends StatelessWidget {
     try {
       await _service.switchTo(id);
     } on ProfileFailure catch (e) {
-      Get.snackbar(
+      showSnack(
         'Switched profile',
         "We couldn't remember this choice: ${e.message}",
       );
@@ -108,10 +110,39 @@ class ProfileSwitcherSheet extends StatelessWidget {
   Widget _body() {
     switch (_service.status.value) {
       case ProfilesStatus.idle || ProfilesStatus.loading:
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 32),
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.primaryContainer),
+        return Skeleton(
+          label: 'Loading profiles',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < 2; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: SkeletonCard(
+                    color: AppColors.surfaceContainerLow,
+                    shadow: null,
+                    radius: 24,
+                    padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+                    child: Row(
+                      children: [
+                        const Bone.circle(size: 44),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: BoneColumn(
+                            children: [
+                              Bone.text(
+                                AppTextStyles.titleMd,
+                                widthFactor: 0.6,
+                              ),
+                              Bone.text(AppTextStyles.bodySm, widthFactor: 0.4),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
       case ProfilesStatus.error:
@@ -142,6 +173,22 @@ class ProfileSwitcherSheet extends StatelessWidget {
               ),
             const SizedBox(height: 8),
             _AddProfile(onAdd: _add),
+            if (_service.shared.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Shared with you',
+                style: AppTextStyles.labelLg.copyWith(
+                  color: AppColors.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (final profile in _service.shared)
+                _ProfileTile(
+                  profile: profile,
+                  active: profile.id == activeId,
+                  onTap: () => _switchTo(profile.id),
+                ),
+            ],
           ],
         );
     }
@@ -153,13 +200,15 @@ class _ProfileTile extends StatelessWidget {
     required this.profile,
     required this.active,
     required this.onTap,
-    required this.onEdit,
+    this.onEdit,
   });
 
   final UserProfile profile;
   final bool active;
   final VoidCallback onTap;
-  final VoidCallback onEdit;
+
+  /// Null for profiles shared with this account: only owners edit them.
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -172,7 +221,7 @@ class _ProfileTile extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
           side: active
-              ? const BorderSide(color: AppColors.primaryContainer, width: 2)
+              ? BorderSide(color: AppColors.primaryContainer, width: 2)
               : BorderSide.none,
         ),
         child: InkWell(
@@ -233,14 +282,21 @@ class _ProfileTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Edit ${profile.fullName}',
-                  onPressed: onEdit,
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    color: AppColors.primary,
+                if (onEdit != null)
+                  IconButton(
+                    tooltip: 'Edit ${profile.fullName}',
+                    onPressed: onEdit,
+                    icon: Icon(Icons.edit_outlined, color: AppColors.primary),
+                  )
+                else
+                  Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Icon(
+                      Icons.group_outlined,
+                      color: AppColors.onSurfaceVariant,
+                      semanticLabel: 'Shared with you',
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -275,11 +331,7 @@ class _AddProfile extends StatelessWidget {
               ProfileType.other,
             ])
               ActionChip(
-                avatar: const Icon(
-                  Icons.add,
-                  size: 18,
-                  color: AppColors.primary,
-                ),
+                avatar: Icon(Icons.add, size: 18, color: AppColors.primary),
                 label: Text(type.label),
                 labelStyle: AppTextStyles.labelMd.copyWith(
                   color: AppColors.primary,

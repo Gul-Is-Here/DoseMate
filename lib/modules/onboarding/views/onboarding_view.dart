@@ -13,6 +13,7 @@ import '../widgets/feature_list_card.dart';
 import '../widgets/onboarding_illustration.dart';
 import '../widgets/page_indicator.dart';
 import '../widgets/visit_illustration_card.dart';
+import '../../../widgets/app_logo.dart';
 
 class OnboardingView extends GetView<OnboardingViewModel> {
   const OnboardingView({super.key});
@@ -88,32 +89,7 @@ class _TopBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(9999),
-              boxShadow: AppTheme.shadowSm,
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.medication,
-                  color: AppColors.primary,
-                  size: 18,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  AppStrings.appName,
-                  style: AppTextStyles.labelMd.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.025 * 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const AppLogo(size: 40),
           InkWell(
             onTap: onSkip,
             borderRadius: BorderRadius.circular(9999),
@@ -250,7 +226,7 @@ class _FinalTopBar extends StatelessWidget {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: onBack,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 48,
                 height: 48,
                 child: Icon(
@@ -261,32 +237,7 @@ class _FinalTopBar extends StatelessWidget {
               ),
             ),
           ),
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  shape: BoxShape.circle,
-                  boxShadow: AppTheme.shadowSm,
-                ),
-                child: const Icon(
-                  Icons.medication,
-                  color: AppColors.onPrimary,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                AppStrings.appName,
-                style: AppTextStyles.titleMd.copyWith(
-                  color: AppColors.onSurface,
-                  letterSpacing: -0.025 * 18,
-                ),
-              ),
-            ],
-          ),
+          const AppLogo(size: 40),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
@@ -404,7 +355,7 @@ class _FinalPageContent extends StatelessWidget {
               // Underline drawn as a border to get the 4px offset.
               child: Container(
                 padding: const EdgeInsets.only(bottom: 2),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(color: AppColors.primaryFixedDim),
                   ),
@@ -443,7 +394,7 @@ class _StepTopBar extends StatelessWidget {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: onBack,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 48,
                 height: 48,
                 child: Icon(
@@ -462,7 +413,7 @@ class _StepTopBar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.health_and_safety,
                   color: AppColors.primary,
                   size: 18,
@@ -643,7 +594,7 @@ class _StepPageContent extends StatelessWidget {
                         baseline: TextBaseline.alphabetic,
                         child: Container(
                           padding: const EdgeInsets.only(bottom: 2),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             border: Border(
                               bottom: BorderSide(color: AppColors.primary),
                             ),

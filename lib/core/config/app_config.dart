@@ -1,18 +1,45 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
 /// Build-time configuration, passed with
 /// `flutter run --dart-define-from-file=config/keys.json` (see
 /// config/keys.example.json). Nothing secret is committed to source.
 abstract class AppConfig {
-  /// Client key for Places API (New), restricted to this app's Android
-  /// package/certificate and iOS bundle id, and to Places API (New) only.
-  static const googleMapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+  /// Client keys for Places API (New), in the Firebase project. A key takes
+  /// one kind of app restriction, so each platform has its own: Android's
+  /// is limited to this package and its signing certificates, iOS's to this
+  /// bundle id, and both to Places API (New) only.
+  static const placesApiKeyAndroid = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY_ANDROID',
+  );
+  static const placesApiKeyIos = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY_IOS',
+  );
 
-  /// SHA-1 of the Android signing certificate (hex, no colons). Sent with
-  /// requests so an Android-restricted key accepts them.
+  /// This platform's Places key; empty where address search isn't set up.
+  static String get placesApiKey {
+    if (kIsWeb) return '';
+    if (Platform.isAndroid) return placesApiKeyAndroid;
+    if (Platform.isIOS) return placesApiKeyIos;
+    return '';
+  }
+
+  /// SHA-1 of the certificate this build is signed with (hex, no colons):
+  /// the debug keystore's for debug builds, Play's app signing key's for
+  /// Play releases. Sent with requests so the Android-restricted key
+  /// accepts them; that certificate must be on the key's allowed list.
   static const androidCertSha1 = String.fromEnvironment(
     'GOOGLE_ANDROID_CERT_SHA1',
   );
 
   static const appId = 'com.dosemate.app';
+
+  /// The public privacy policy (Firebase Hosting, hosting/privacy/).
+  static final privacyPolicyUrl = Uri.https(
+    'dosemate-70150.web.app',
+    '/privacy/',
+  );
 
   /// OAuth client ids from google-services.json / GoogleService-Info.plist.
   /// Public identifiers, not secrets.

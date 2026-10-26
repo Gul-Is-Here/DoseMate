@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 
 import '../../core/utils/care_dates.dart';
 import '../models/medicine.dart';
+import '../models/user_profile.dart';
 import '../models/visit.dart';
 import '../repositories/care_repository.dart';
 import 'profile_service.dart';
@@ -41,19 +42,71 @@ class CareService extends GetxService {
 
   /// Account and profile the current data belongs to ("uid/profileId").
   String? _key;
-  String? _uid;
   String? _profileId;
+
+  /// Where the active profile's records live: the signed-in account's own,
+  /// or the owner's for a profile shared with it.
+  String? _dataUid;
+  String? _dataPid;
+  SharedAccess? _share;
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _loaded = <String>{};
   Timer? _midnight;
   final _workers = <Worker>[];
 
+  /// Last known revision of each loaded log, undone ones included.
+  final _revs = <String, int>{};
+
+  DoseTap _action(String logId) =>
+      DoseTap.at(_clock(), previousRev: _revs[logId]);
+
   /// Occurrence ids with a log write in flight, to ignore repeated taps.
   final busy = <String>{}.obs;
+
+  /// Snoozes (occurrence id → until), shared by Home, Medication Details
+  /// and Notifications. Kept in memory; listeners in [onSnooze] re-arm the
+  /// dose's alarm and hold off the server's follow-up.
+  final snoozed = <String, DateTime>{}.obs;
+
+  static const snoozeFor = Duration(minutes: 15);
+
+  /// Told of each snooze of an owned profile's dose (see AlarmService).
+  final onSnooze =
+      <void Function(DoseOccurrence o, String pid, DateTime until)>[];
+
+  void snooze(DoseOccurrence o) {
+    final until = _clock().add(snoozeFor);
+    snoozed[o.logId] = until;
+    final pid = _profileId;
+    if (pid == null || isShared) return;
+    for (final f in List.of(onSnooze)) {
+      f(o, pid, until);
+    }
+  }
+
+  bool isSnoozed(DoseOccurrence o) =>
+      snoozed[o.logId]?.isAfter(_clock()) ?? false;
 
   DateTime now() => _clock();
 
   String? get profileId => _profileId;
+
+  /// Account and profile ids the active profile's records are stored under.
+  String? get dataUid => _dataUid;
+  String? get dataPid => _dataPid;
+
+  /// Identifies the current data (account, profile and shared access), so
+  /// other services can tell when to reload.
+  String? get dataKey => _key;
+
+  /// The active profile belongs to another account (read through the
+  /// caregiver-safe copies and the permissions granted).
+  bool get isShared => _share != null;
+
+  CarePermissions? get permissions => _share?.permissions;
+
+  bool get canSeeChecklist => _share?.permissions.checklist ?? true;
+  bool get canManageVisits => _share?.permissions.appointments ?? true;
 
   @override
   void onInit() {
@@ -62,6 +115,8 @@ class CareService extends GetxService {
       ever(profiles.activeProfileId, (_) => _sync()),
       ever(profiles.status, (_) => _sync()),
       ever(profiles.profiles, (_) => _sync()),
+      // Access granted, changed or revoked by a profile's owner.
+      ever(profiles.shared, (_) => _sync()),
     ]);
     _sync();
   }
@@ -79,8 +134,15 @@ class CareService extends GetxService {
   /// everything when there is none.
   void _sync({bool force = false}) {
     final uid = profiles.uid;
-    final pid = profiles.isReady ? profiles.activeProfile?.id : null;
-    final key = uid == null || pid == null ? null : '$uid/$pid';
+    final active = profiles.isReady ? profiles.activeProfile : null;
+    final pid = active?.id;
+    final share = active?.share;
+    final access = share?.permissions;
+    final key = uid == null || pid == null
+        ? null
+        : share == null
+        ? '$uid/$pid'
+        : '$uid/$pid/${access!.checklist}${access.appointments}';
     if (uid != null && pid == null) {
       // Signed in but no profile to hold records yet. Never just wait:
       // create Myself (the profile listener then brings us back here), or
@@ -107,12 +169,14 @@ class CareService extends GetxService {
     _stop();
     if (uid == null || pid == null) return;
     _key = key;
-    _uid = uid;
     _profileId = pid;
+    _share = share;
+    _dataUid = share?.ownerUid ?? uid;
+    _dataPid = share?.profileId ?? pid;
     status.value = CareStatus.loading;
     today.value = CareDates.dateOnly(_clock());
-    _listenMedicines(uid, pid);
-    _listenDated(uid, pid);
+    _listenMedicines(_dataUid!, _dataPid!);
+    _listenDated(_dataUid!, _dataPid!);
     _scheduleMidnight();
   }
 
@@ -124,11 +188,14 @@ class CareService extends GetxService {
     _loaded.clear();
     _midnight?.cancel();
     _midnight = null;
-    _key = _uid = _profileId = null;
+    _key = _profileId = _dataUid = _dataPid = null;
+    _share = null;
     medicines.clear();
     visits.clear();
     logs.clear();
+    _revs.clear();
     busy.clear();
+    snoozed.clear();
     error.value = null;
     status.value = CareStatus.idle;
   }
@@ -143,7 +210,9 @@ class CareService extends GetxService {
 
   void _listenMedicines(String uid, String pid) => _listen(
     'medicines',
-    repository.watchMedicines(uid, pid),
+    canSeeChecklist
+        ? repository.watchMedicines(uid, pid, shared: isShared)
+        : Stream.value(<Medicine>[]),
     (list) => medicines.assignAll(
       list
         ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())),
@@ -156,17 +225,31 @@ class CareService extends GetxService {
     final day = today.value;
     _listen(
       'visits',
-      repository.watchUpcomingVisits(uid, pid, day),
+      canManageVisits
+          ? repository.watchUpcomingVisits(uid, pid, day)
+          : Stream.value(<Visit>[]),
       visits.assignAll,
     );
     _listen(
       'logs',
-      repository.watchLogs(
-        uid,
-        pid,
-        CareDates.addDays(day, -CareRepository.historyDays),
-      ),
-      (list) => logs.value = {for (final log in list) log.id: log},
+      canSeeChecklist
+          ? repository.watchLogs(
+              uid,
+              pid,
+              CareDates.addDays(day, -CareRepository.historyDays),
+              shared: isShared,
+              includeCleared: !isShared,
+            )
+          : Stream.value(<DoseLog>[]),
+      (list) {
+        _revs
+          ..clear()
+          ..addAll({for (final log in list) log.id: log.rev});
+        logs.value = {
+          for (final log in list)
+            if (!log.isUndone) log.id: log,
+        };
+      },
     );
   }
 
@@ -206,7 +289,7 @@ class CareService extends GetxService {
 
   /// Moves to the new local day: re-queries the dated windows.
   void rollOver() {
-    final uid = _uid, pid = _profileId;
+    final uid = _dataUid, pid = _dataPid;
     if (uid == null || pid == null) return;
     final day = CareDates.dateOnly(_clock());
     if (day != today.value) {
@@ -298,40 +381,87 @@ class CareService extends GetxService {
     return uid;
   }
 
-  String newMedicineId(String pid) =>
-      repository.newMedicineId(_requireUid(), pid);
+  static const _viewOnly = CareFailure(
+    'This profile is shared with you. You can view it, but only its owner '
+    'can make this change.',
+  );
 
-  String newVisitId(String pid) => repository.newVisitId(_requireUid(), pid);
+  /// The stored location of [pid]'s records, for a write. Shared profiles
+  /// allow only what their owner granted ([visits]: appointment changes).
+  (String, String) _target(String pid, {bool visits = false}) {
+    final share = profiles.byId(pid)?.share;
+    if (share == null) return (_requireUid(), pid);
+    if (!visits || !share.permissions.appointments) throw _viewOnly;
+    return (share.ownerUid, share.profileId);
+  }
 
+  String newMedicineId(String pid) {
+    final (uid, id) = _target(pid);
+    return repository.newMedicineId(uid, id);
+  }
+
+  String newVisitId(String pid) {
+    final (uid, id) = _target(pid, visits: true);
+    return repository.newVisitId(uid, id);
+  }
+
+  /// Saves [medicine]. Pass the saved version as [previous] when editing,
+  /// so a schedule or status change only applies from today.
   Future<WriteResult> saveMedicine(
     String pid,
     Medicine medicine, {
     required bool isNew,
-  }) => repository.saveMedicine(_requireUid(), pid, medicine, isNew: isNew);
+    Medicine? previous,
+  }) {
+    final (uid, id) = _target(pid);
+    return repository.saveMedicine(
+      uid,
+      id,
+      previous == null
+          ? medicine
+          : medicine.withHistoryFrom(previous, today.value),
+      isNew: isNew,
+    );
+  }
 
   Future<({String url, String path})> uploadMedicinePhoto(
     String pid,
     String medicineId,
     File file,
-  ) => repository.uploadMedicinePhoto(_requireUid(), pid, medicineId, file);
+  ) {
+    final (uid, id) = _target(pid);
+    return repository.uploadMedicinePhoto(uid, id, medicineId, file);
+  }
 
   Future<void> deletePhoto(String path) => repository.deletePhoto(path);
 
   Future<WriteResult> setMedicineStatus(Medicine m, MedicineStatus status) =>
-      repository.setMedicineStatus(_requireUid(), _activePid, m.id, status);
+      repository.setMedicineStatus(
+        _requireUid(),
+        _activePid,
+        m.withStatus(status, today.value),
+      );
 
   Future<WriteResult> addSupply(Medicine m, int count) =>
       repository.addSupply(_requireUid(), _activePid, m.id, count);
 
-  /// Deletes [m] with its loaded logs; its photo is removed afterwards.
+  /// Deletes [m] with all its dose logs; its photo is removed afterwards.
   Future<WriteResult> deleteMedicine(String pid, Medicine m) async {
+    final (uid, id) = _target(pid);
     final result = await repository.deleteMedicine(
-      _requireUid(),
-      pid,
+      uid,
+      id,
       m.id,
+      // Undone logs too (known by their revisions); the repository also
+      // finds those not loaded.
       logIds: pid == _profileId
-          ? logs.values.where((l) => l.medicineId == m.id).map((l) => l.id)
-          : const [],
+          ? {
+              ...logs.values
+                  .where((l) => l.medicineId == m.id)
+                  .map((l) => l.id),
+              ..._revs.keys.where((id) => id.startsWith('${m.id}_')),
+            }
+          : const <String>{},
     );
     if (m.photoPath case final path?) await repository.deletePhoto(path);
     return result;
@@ -339,11 +469,17 @@ class CareService extends GetxService {
 
   /// Marks one dose taken or skipped. Ignored while the same dose is
   /// already being written, and when it already has that status.
-  Future<WriteResult?> logDose(DoseOccurrence o, DoseStatus status) async {
+  Future<WriteResult?> logDose(
+    DoseOccurrence o,
+    DoseStatus status, {
+    String? note,
+  }) async {
     final previous = logFor(o);
-    if (busy.contains(o.logId) || previous?.status == status) return null;
-    final wasTaken = previous?.status == DoseStatus.taken;
-    final isTaken = status == DoseStatus.taken;
+    if (busy.contains(o.logId)) return null;
+    if (previous?.status == status &&
+        (note == null || note == previous?.note)) {
+      return null;
+    }
     busy.add(o.logId);
     try {
       return await repository.logDose(
@@ -351,11 +487,9 @@ class CareService extends GetxService {
         _activePid,
         o,
         status,
-        supplyChange: wasTaken == isTaken
-            ? 0
-            : isTaken
-            ? (o.medicine.quantity > 0 ? -1 : 0)
-            : 1,
+        action: _action(o.logId),
+        note: note,
+        replacesLegacyTaken: previous?.isLegacyTaken ?? false,
       );
     } finally {
       busy.remove(o.logId);
@@ -381,7 +515,7 @@ class CareService extends GetxService {
         _requireUid(),
         _activePid,
         log,
-        supplyChange: log.status == DoseStatus.taken ? 1 : 0,
+        action: _action(log.id),
       );
     } finally {
       busy.remove(log.id);
@@ -392,18 +526,27 @@ class CareService extends GetxService {
     String pid,
     Visit visit, {
     required bool isNew,
-  }) => repository.saveVisit(_requireUid(), pid, visit, isNew: isNew);
+  }) {
+    final (uid, id) = _target(pid, visits: true);
+    return repository.saveVisit(uid, id, visit, isNew: isNew);
+  }
 
-  Future<WriteResult> cancelVisit(String pid, String id) =>
-      repository.cancelVisit(_requireUid(), pid, id);
+  Future<WriteResult> cancelVisit(String pid, String id) {
+    final (uid, profile) = _target(pid, visits: true);
+    return repository.cancelVisit(uid, profile, id);
+  }
 
-  Future<WriteResult> deleteVisit(String pid, String id) =>
-      repository.deleteVisit(_requireUid(), pid, id);
+  /// Only owners delete visits; caregivers can cancel them.
+  Future<WriteResult> deleteVisit(String pid, String id) {
+    final (uid, profile) = _target(pid);
+    return repository.deleteVisit(uid, profile, id);
+  }
 
   /// Writes from list screens act on the data shown, which is the profile
   /// the listeners belong to.
   String get _activePid {
     final pid = _profileId;
+    if (isShared) throw _viewOnly;
     if (pid == null) {
       throw const CareFailure('Your schedule is still loading. Try again.');
     }

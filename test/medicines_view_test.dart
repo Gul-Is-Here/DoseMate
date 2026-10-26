@@ -162,6 +162,30 @@ void main() {
     expect(find.text('Restore Medicine'), findsOneWidget);
   });
 
+  testWidgets('refill dialog: cancel and confirm close cleanly and add '
+      'supply', (tester) async {
+    await pump(tester, const Size(400, 3000));
+    await tester.tap(find.byTooltip('Expand details').first);
+    await tester.pump();
+
+    await tester.tap(find.text('Mark Refill Purchased'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '5');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle(); // closing animation rebuilds the field
+    expect(tester.takeException(), isNull);
+    expect(careStore.medicinesOf(uid, 'self')['amox']!.quantity, 3);
+
+    await tester.tap(find.text('Mark Refill Purchased'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '10');
+    await tester.pump();
+    await tester.tap(find.text('Add to supply'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(careStore.medicinesOf(uid, 'self')['amox']!.quantity, 13);
+  });
+
   // The default test font draws every glyph a full em wide, so the smallest
   // phone width is only meaningful with the real fonts loaded.
   final realFonts = Platform.environment.containsKey('HOME_FONTS');

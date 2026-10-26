@@ -22,10 +22,25 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>DoseMate uses the camera to take a profile or medicine photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DoseMate lets you choose a profile or medicine photo from your library.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -49,6 +64,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -65,22 +84,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>NSCameraUsageDescription</key>
-	<string>DoseMate uses the camera to take a profile photo.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>DoseMate lets you choose a profile photo from your library.</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<!-- REVERSED_CLIENT_ID from GoogleService-Info.plist, for Google sign-in. -->
-				<string>com.googleusercontent.apps.1074770041543-tkgn7pka7q1j80ja72evbgobbg40lnmk</string>
-			</array>
-		</dict>
 	</array>
 </dict>
 </plist>

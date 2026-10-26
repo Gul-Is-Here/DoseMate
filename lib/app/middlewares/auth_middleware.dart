@@ -10,7 +10,8 @@ class VerifiedMiddleware extends GetMiddleware {
   @override
   RouteSettings? redirect(String? route) {
     final user = Get.find<AuthService>().user.value;
-    if (user != null && AuthRepository.needsEmailVerification(user)) {
+    if (user == null) return const RouteSettings(name: AppRoutes.login);
+    if (AuthRepository.needsEmailVerification(user)) {
       return const RouteSettings(name: AppRoutes.verifyEmail);
     }
     return null;

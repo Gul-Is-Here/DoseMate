@@ -21,17 +21,14 @@ class ProfileFieldCard extends StatelessWidget {
   final String? trailingLabel;
 
   /// Text style shared by the inputs placed in [child].
-  static final inputStyle = AppTextStyles.bodyLg.copyWith(
-    color: AppColors.onSurface,
-  );
+  static TextStyle get inputStyle =>
+      AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface);
 
   static InputDecoration inputDecoration(String hint) => InputDecoration(
     isCollapsed: true,
     border: InputBorder.none,
     hintText: hint,
-    hintStyle: AppTextStyles.bodyLg.copyWith(
-      color: AppColors.outline.withValues(alpha: 0.6),
-    ),
+    hintStyle: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
   );
 
   @override
@@ -48,6 +45,10 @@ class ProfileFieldCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(48),
+              border: Border.all(
+                color: focused ? AppColors.primary : AppColors.outline,
+                width: focused ? 2 : 1,
+              ),
               boxShadow: focused ? AppTheme.shadowMd : AppTheme.shadowSm,
             ),
             child: Column(
@@ -69,7 +70,7 @@ class ProfileFieldCard extends StatelessWidget {
                       Text(
                         trailingLabel!,
                         style: AppTextStyles.labelSm.copyWith(
-                          color: AppColors.outline,
+                          color: AppColors.onSurfaceVariant,
                         ),
                       ),
                   ],

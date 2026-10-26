@@ -8,6 +8,7 @@ import '../data/models/user_profile.dart';
 import '../data/services/auth_service.dart';
 import 'profile_avatar.dart';
 import 'profile_switcher_sheet.dart';
+import 'app_logo.dart';
 
 /// Shared screen chrome (top bar, bottom tabs) and building blocks for the
 /// tabbed DoseMate screens.
@@ -92,7 +93,7 @@ class AppTopBar extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           minHeight: 44,
                           children: [
-                            const DmDot(size: 8, color: AppColors.primary),
+                            DmDot(size: 8, color: AppColors.primary),
                             const SizedBox(width: 4),
                             Flexible(
                               child: ConstrainedBox(
@@ -113,7 +114,7 @@ class AppTopBar extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            const Icon(
+                            Icon(
                               Icons.expand_more,
                               size: 18,
                               color: AppColors.onSurfaceVariant,
@@ -125,20 +126,6 @@ class AppTopBar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Caregiver Notifications',
-                  onPressed: () {},
-                  constraints: const BoxConstraints.tightFor(
-                    width: 44,
-                    height: 44,
-                  ),
-                  icon: const Icon(
-                    Icons.notifications_none,
-                    size: 24,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 4),
                 const _AccountMenu(),
               ],
             ),
@@ -149,31 +136,13 @@ class AppTopBar extends StatelessWidget {
   }
 }
 
-/// DoseMate mark. Drop the brand logo at assets/logo.png to replace the
-/// fallback.
+/// The DoseMate mark in the top bar.
 class _Logo extends StatelessWidget {
   const _Logo();
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/logo.png',
-      height: 32,
-      fit: BoxFit.contain,
-      errorBuilder: (_, _, _) => Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(
-          Icons.medication_outlined,
-          size: 20,
-          color: AppColors.primary,
-        ),
-      ),
-    );
+    return const AppLogo();
   }
 }
 
@@ -254,23 +223,14 @@ class AppBackBar extends StatelessWidget {
                     width: 44,
                     height: 44,
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back,
                     size: 24,
                     color: AppColors.onSurface,
                   ),
                 ),
                 const SizedBox(width: 4),
-                Image.asset(
-                  'assets/logo.png',
-                  height: 32,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(
-                    Icons.medication_outlined,
-                    size: 28,
-                    color: AppColors.primary,
-                  ),
-                ),
+                const AppLogo(size: 28),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -304,63 +264,63 @@ class AppBackBar extends StatelessWidget {
   }
 }
 
+/// The main tab bar. Selecting a tab only reports it through [onSelect];
+/// the shell switches content in place.
 class AppBottomNav extends StatelessWidget {
-  const AppBottomNav({super.key, required this.activeIndex});
+  const AppBottomNav({
+    super.key,
+    required this.activeIndex,
+    required this.onSelect,
+  });
 
-  /// 0 Home, 1 Medicines; the other tabs have no screens yet.
+  /// 0 Home, 1 Medicines, 2 Calendar, 3 History, 4 Settings.
   final int activeIndex;
+  final ValueChanged<int> onSelect;
 
   static const _items = [
-    (Icons.home_outlined, 'Home'),
-    (Icons.medication_outlined, 'Medicines'),
-    (Icons.calendar_month_outlined, 'Calendar'),
-    (Icons.fact_check_outlined, 'History'),
-    (Icons.group_outlined, 'Family'),
+    (Icons.home_outlined, Icons.home_rounded, 'Home'),
+    (Icons.medication_outlined, Icons.medication_rounded, 'Medicines'),
+    (Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Calendar'),
+    (Icons.fact_check_outlined, Icons.fact_check_rounded, 'History'),
+    (Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
   ];
 
-  void _open(int index) {
-    if (index == activeIndex) return;
-    final route = switch (index) {
-      0 => AppRoutes.home,
-      1 => AppRoutes.medicines,
-      _ => null,
-    };
-    if (route != null) Get.offAllNamed(route);
-  }
+  /// Tabs with a screen.
+  static const _enabledTabs = 5;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.9),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0F132238),
-            offset: Offset(0, -2),
-            blurRadius: 16,
+            color: Color(0x14132238),
+            offset: Offset(0, -4),
+            blurRadius: 24,
           ),
         ],
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 80,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                for (final (index, (icon, label)) in _items.indexed)
-                  Flexible(
-                    child: _NavItem(
-                      icon: icon,
-                      label: label,
-                      active: index == activeIndex,
-                      onTap: () => _open(index),
-                    ),
+        minimum: const EdgeInsets.only(bottom: 4),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+          child: Row(
+            children: [
+              for (final (index, (icon, activeIcon, label)) in _items.indexed)
+                Expanded(
+                  child: _NavItem(
+                    icon: icon,
+                    activeIcon: activeIcon,
+                    label: label,
+                    active: index == activeIndex,
+                    enabled: index < _enabledTabs,
+                    onTap: () => onSelect(index),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
@@ -371,47 +331,105 @@ class AppBottomNav extends StatelessWidget {
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.icon,
+    required this.activeIcon,
     required this.label,
     required this.active,
+    required this.enabled,
     required this.onTap,
   });
 
   final IconData icon;
+  final IconData activeIcon;
   final String label;
   final bool active;
+  final bool enabled;
   final VoidCallback onTap;
+
+  static const _duration = Duration(milliseconds: 220);
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : AppColors.onSurfaceVariant;
+    final color = active
+        ? AppColors.primary
+        : enabled
+        ? AppColors.onSurfaceVariant
+        : AppColors.outline;
     return Semantics(
       selected: active,
       button: true,
-      label: label,
+      enabled: enabled,
+      label: enabled ? label : '$label, coming soon',
       excludeSemantics: true,
-      child: InkResponse(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 56, minHeight: 52),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 26, color: color),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.labelSm
-                    .copyWith(color: color)
-                    .weight(active ? FontWeight.w700 : FontWeight.w600),
-              ),
-            ],
+      child: Tooltip(
+        message: enabled ? label : '$label is coming soon',
+        excludeFromSemantics: true,
+        child: InkResponse(
+          onTap: enabled ? onTap : null,
+          containedInkWell: true,
+          highlightShape: BoxShape.rectangle,
+          borderRadius: BorderRadius.circular(16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: _duration,
+                  curve: Curves.easeOutCubic,
+                  width: active ? 56 : 40,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: active
+                        ? AppColors.primaryFixed.withValues(alpha: 0.55)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: _duration,
+                    transitionBuilder: (child, animation) => ScaleTransition(
+                      scale: Tween(begin: 0.85, end: 1.0).animate(animation),
+                      child: FadeTransition(opacity: animation, child: child),
+                    ),
+                    child: Icon(
+                      active ? activeIcon : icon,
+                      key: ValueKey(active),
+                      size: 24,
+                      color: color,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Long labels shrink instead of wrapping or overflowing on
+                // narrow phones and with large text.
+                SizedBox(
+                  height: 16,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: AnimatedDefaultTextStyle(
+                      duration: _duration,
+                      style: AppTextStyles.labelSm
+                          .copyWith(color: color)
+                          .weight(active ? FontWeight.w700 : FontWeight.w500),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        textScaler: _labelScaler(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  /// Large text grows labels a little, then the fit above takes over.
+  static TextScaler _labelScaler(BuildContext context) =>
+      MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.3);
 }
 
 // Small building blocks.
@@ -423,12 +441,14 @@ class DmCard extends StatelessWidget {
     required this.padding,
     required this.child,
     this.shadow,
+    this.radius = kRadiusLg,
   });
 
   final Color color;
   final EdgeInsets padding;
   final Widget child;
   final List<BoxShadow>? shadow;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
@@ -436,7 +456,7 @@ class DmCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(kRadiusLg),
+        borderRadius: BorderRadius.circular(radius),
         boxShadow: shadow,
       ),
       child: child,
@@ -497,6 +517,32 @@ class DmPill extends StatelessWidget {
   }
 }
 
+/// A bar pinned under a form that keeps its main actions on screen,
+/// above the keyboard and the home indicator.
+class DmActionBar extends StatelessWidget {
+  const DmActionBar({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        border: Border(top: BorderSide(color: AppColors.outlineVariant)),
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(kMargin, 12, kMargin, 0),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 class DmWideButton extends StatelessWidget {
   const DmWideButton({
     super.key,
@@ -504,35 +550,49 @@ class DmWideButton extends StatelessWidget {
     required this.icon,
     required this.height,
     required this.onTap,
-    this.color = AppColors.primary,
+    this.color,
+    this.compact = false,
   });
 
   final String label;
   final IconData icon;
   final double height;
 
+  /// Smaller icon and label, for a pinned action bar.
+  final bool compact;
+
   /// Null shows the button disabled (e.g. while saving).
   final VoidCallback? onTap;
-  final Color color;
+
+  /// Defaults to the primary colour.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    // Disabled: a muted surface with readable text, in either theme.
+    final fg = enabled ? AppColors.onPrimary : AppColors.onSurfaceVariant;
     return DmPill(
       onTap: onTap,
-      color: onTap == null ? color.withValues(alpha: 0.6) : color,
+      color: enabled ? color ?? AppColors.primary : AppColors.divider,
       minHeight: height,
       expand: true,
-      shadow: kShadowMd,
+      shadow: enabled ? kShadowMd : null,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       children: [
-        Icon(icon, size: 22, color: AppColors.onPrimary),
-        const SizedBox(width: 8),
+        Icon(icon, size: compact ? 18 : 22, color: fg),
+        SizedBox(width: compact ? 6 : 8),
         Flexible(
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.labelLg.copyWith(color: AppColors.onPrimary),
+            style: compact
+                ? AppTextStyles.labelMd.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w700,
+                  )
+                : AppTextStyles.labelLg.copyWith(color: fg),
           ),
         ),
       ],
@@ -635,11 +695,13 @@ class DmToggle extends StatelessWidget {
     required this.value,
     required this.onTap,
     required this.label,
-    this.activeColor = AppColors.primaryContainer,
+    this.activeColor,
   });
 
   final bool value;
-  final Color activeColor;
+
+  /// Defaults to the primary colour.
+  final Color? activeColor;
   final VoidCallback onTap;
   final String label;
 
@@ -656,19 +718,26 @@ class DmToggle extends StatelessWidget {
           height: 28,
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
-            color: value ? activeColor : AppColors.surfaceContainerHighest,
+            color: value
+                ? activeColor ?? AppColors.primaryContainer
+                : AppColors.surfaceContainer,
             borderRadius: BorderRadius.circular(999),
+            // Off: an outlined track, so it reads on any surface.
+            border: Border.all(
+              color: value
+                  ? activeColor ?? AppColors.primaryContainer
+                  : AppColors.outline,
+            ),
           ),
           child: AnimatedAlign(
             duration: const Duration(milliseconds: 150),
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
             child: Container(
-              width: 24,
-              height: 24,
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: value ? AppColors.onPrimary : AppColors.outline,
                 shape: BoxShape.circle,
-                boxShadow: kShadowSm,
               ),
             ),
           ),

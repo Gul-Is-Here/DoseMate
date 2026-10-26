@@ -6,6 +6,7 @@ import 'package:dosemate/data/repositories/profile_repository.dart';
 import 'package:dosemate/data/services/profile_service.dart';
 import 'package:dosemate/modules/profile_setup/view_model/profile_setup_view_model.dart';
 import 'package:dosemate/widgets/profile_switcher_sheet.dart';
+import 'package:dosemate/widgets/skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -70,8 +71,11 @@ void main() {
   testWidgets('shows a loading state while profiles load', (tester) async {
     service.status.value = ProfilesStatus.loading;
     await open(tester, settle: false);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    // Stop the endless spinner before the test ends.
+    // Placeholder rows shaped like profiles, not a spinner.
+    expect(find.byType(Skeleton), findsOneWidget);
+    expect(find.byType(Bone), findsWidgets);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    // Stop the endless shimmer before the test ends.
     Get.back();
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpWidget(const SizedBox());

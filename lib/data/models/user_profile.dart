@@ -33,6 +33,81 @@ enum ProfileType {
   };
 }
 
+/// What a caregiver may do with a profile shared with them, as chosen by
+/// the owner. Enforced by Firestore rules and Cloud Functions.
+class CarePermissions {
+  const CarePermissions({
+    this.checklist = false,
+    this.alerts = false,
+    this.appointments = false,
+  });
+
+  factory CarePermissions.fromMap(Object? data) {
+    final m = data is Map ? data : const {};
+    return CarePermissions(
+      checklist: m['checklist'] == true,
+      alerts: m['alerts'] == true,
+      appointments: m['appointments'] == true,
+    );
+  }
+
+  /// "View daily dose checklist": medicine names, times and taken/skipped,
+  /// without dosage, notes or photos.
+  final bool checklist;
+
+  /// "Missed dose alert escalation". Saved; alerts are not delivered yet.
+  final bool alerts;
+
+  /// "Manage appointment schedule": read, add and reschedule visits.
+  final bool appointments;
+
+  bool get any => checklist || alerts || appointments;
+
+  Map<String, bool> toMap() => {
+    'checklist': checklist,
+    'alerts': alerts,
+    'appointments': appointments,
+  };
+
+  CarePermissions copyWith({
+    bool? checklist,
+    bool? alerts,
+    bool? appointments,
+  }) => CarePermissions(
+    checklist: checklist ?? this.checklist,
+    alerts: alerts ?? this.alerts,
+    appointments: appointments ?? this.appointments,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is CarePermissions &&
+      other.checklist == checklist &&
+      other.alerts == alerts &&
+      other.appointments == appointments;
+
+  @override
+  int get hashCode => Object.hash(checklist, alerts, appointments);
+}
+
+/// Access to a profile another account owns, from
+/// `users/{uid}/sharedProfiles/{ownerUid}_{profileId}`.
+class SharedAccess {
+  const SharedAccess({
+    required this.ownerUid,
+    required this.profileId,
+    required this.ownerName,
+    required this.permissions,
+  });
+
+  final String ownerUid;
+
+  /// The profile's id in the owner's account.
+  final String profileId;
+  final String ownerName;
+  final CarePermissions permissions;
+}
+
 /// One managed profile, stored at `users/{uid}/profiles/{id}`. The account
 /// holder's profile always has the id [selfId].
 class UserProfile {
@@ -46,9 +121,31 @@ class UserProfile {
     this.emergencyContactPhone,
     this.photoUrl,
     this.photoPath,
+    this.share,
   });
 
   static const selfId = 'self';
+
+  /// A profile shared with this account. Its local [id] is
+  /// `sh_{ownerUid}_{profileId}`; it is never written back as a profile.
+  factory UserProfile.shared(Map<String, dynamic> data) {
+    final ownerUid = data['ownerUid'] as String? ?? '';
+    final profileId = data['profileId'] as String? ?? '';
+    return UserProfile(
+      id: sharedIdFor(ownerUid, profileId),
+      type: ProfileType.other,
+      fullName: data['profileName'] as String? ?? '',
+      share: SharedAccess(
+        ownerUid: ownerUid,
+        profileId: profileId,
+        ownerName: data['ownerName'] as String? ?? '',
+        permissions: CarePermissions.fromMap(data['permissions']),
+      ),
+    );
+  }
+
+  static String sharedIdFor(String ownerUid, String profileId) =>
+      'sh_${ownerUid}_$profileId';
 
   factory UserProfile.fromMap(String id, Map<String, dynamic> data) =>
       UserProfile(
@@ -79,10 +176,17 @@ class UserProfile {
   final String? photoUrl;
   final String? photoPath;
 
+  /// Set when another account owns this profile and shared it.
+  final SharedAccess? share;
+
   bool get isSelf => id == selfId;
 
+  bool get isShared => share != null;
+
   /// Short label for the switcher, e.g. "Myself" or "Parent · Mother / Senior Parent".
-  String get relationshipLabel => isSelf || relationship == null
+  String get relationshipLabel => isShared
+      ? 'Shared by ${share!.ownerName}'
+      : isSelf || relationship == null
       ? type.label
       : '${type.label} · $relationship';
 
@@ -97,6 +201,7 @@ class UserProfile {
         emergencyContactPhone: emergencyContactPhone,
         photoUrl: photoUrl ?? this.photoUrl,
         photoPath: photoPath ?? this.photoPath,
+        share: share,
       );
 
   /// The user-editable fields to write with a merge; empty optional fields

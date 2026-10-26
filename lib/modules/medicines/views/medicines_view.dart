@@ -7,9 +7,10 @@ import '../../../core/utils/care_dates.dart';
 import '../../../data/models/medicine.dart';
 import '../../../data/services/care_service.dart';
 import '../../../widgets/app_shell.dart';
+import '../../../widgets/skeleton.dart';
 import '../view_model/medicines_view_model.dart';
 
-const _error = Color(0xFFBA1A1A);
+Color get _error => AppColors.error;
 const _shadowXl = [
   BoxShadow(
     color: Color(0x1A000000),
@@ -55,14 +56,7 @@ class MedicinesView extends GetView<MedicinesViewModel> {
                         () => switch (controller.care.status.value) {
                           CareStatus.error => const _ErrorCard(),
                           CareStatus.ready => const _MedicineList(),
-                          _ => const Padding(
-                            padding: EdgeInsets.all(kSpaceLg),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
+                          _ => const _ListSkeleton(),
                         },
                       ),
                       const SizedBox(height: kSpaceMd),
@@ -84,7 +78,7 @@ class MedicinesView extends GetView<MedicinesViewModel> {
           shadow: _shadowXl,
           padding: const EdgeInsets.symmetric(horizontal: 24),
           children: [
-            const Icon(Icons.add, size: 24, color: AppColors.onPrimary),
+            Icon(Icons.add, size: 24, color: AppColors.onPrimary),
             const SizedBox(width: 8),
             Text(
               'Add New Medicine',
@@ -95,7 +89,6 @@ class MedicinesView extends GetView<MedicinesViewModel> {
           ],
         ),
       ),
-      bottomNavigationBar: const AppBottomNav(activeIndex: 1),
     );
   }
 }
@@ -112,7 +105,7 @@ class _Header extends GetView<MedicinesViewModel> {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.medication_outlined,
                 size: 22,
                 color: AppColors.primary,
@@ -140,7 +133,7 @@ class _Header extends GetView<MedicinesViewModel> {
                     vertical: 6,
                   ),
                   children: [
-                    const DmDot(size: 8, color: AppColors.primary),
+                    DmDot(size: 8, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Obx(
@@ -155,7 +148,7 @@ class _Header extends GetView<MedicinesViewModel> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(
+                    Icon(
                       Icons.tune,
                       size: 16,
                       color: AppColors.onSurfaceVariant,
@@ -205,7 +198,7 @@ class _Segments extends GetView<MedicinesViewModel> {
                     : null,
                 child: _SegmentLabel(
                   label: label,
-                  count: ready ? count : 0,
+                  count: ready ? count : null,
                   selected: selected == index,
                 ),
               ),
@@ -231,7 +224,9 @@ class _SegmentLabel extends StatelessWidget {
   });
 
   final String label;
-  final int count;
+
+  /// Null while loading: the badge stays, without a number.
+  final int? count;
   final bool selected;
 
   @override
@@ -265,7 +260,7 @@ class _SegmentLabel extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: Text(
-            '$count',
+            count == null ? '' : '$count',
             style: AppTextStyles.labelSm
                 .copyWith(
                   fontSize: 11,
@@ -294,7 +289,7 @@ class _ErrorCard extends GetView<MedicinesViewModel> {
       padding: const EdgeInsets.all(kSpaceLg),
       child: Column(
         children: [
-          const Icon(Icons.cloud_off, size: 36, color: AppColors.secondary),
+          Icon(Icons.cloud_off, size: 36, color: AppColors.secondary),
           const SizedBox(height: 12),
           Obx(
             () => Text(
@@ -318,6 +313,78 @@ class _ErrorCard extends GetView<MedicinesViewModel> {
   }
 }
 
+/// The medicine cards while the profile's medicines load.
+class _ListSkeleton extends StatelessWidget {
+  const _ListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Skeleton(
+      label: 'Loading medicines',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < 3; i++) ...[
+            if (i > 0) const SizedBox(height: kSpaceMd),
+            const _TileSkeleton(),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact [_MedicineTile]: header, routine line and one chip.
+class _TileSkeleton extends StatelessWidget {
+  const _TileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonCard(
+      padding: const EdgeInsets.fromLTRB(
+        kSpaceLg + 4,
+        kSpaceLg,
+        kSpaceLg,
+        kSpaceLg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Bone.circle(size: 48),
+              const SizedBox(width: kSpaceMd),
+              Expanded(
+                child: BoneColumn(
+                  children: [
+                    Bone.text(AppTextStyles.titleLg, widthFactor: 0.65),
+                    Bone.text(AppTextStyles.bodyMd, widthFactor: 0.45),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Bone.circle(size: 40),
+            ],
+          ),
+          const SizedBox(height: kSpaceMd),
+          Row(
+            children: [
+              const Bone.circle(size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Bone.text(AppTextStyles.bodyMd, widthFactor: 0.7),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Bone(width: 150, height: 28, radius: 999),
+        ],
+      ),
+    );
+  }
+}
+
 class _MedicineList extends GetView<MedicinesViewModel> {
   const _MedicineList();
 
@@ -333,7 +400,7 @@ class _MedicineList extends GetView<MedicinesViewModel> {
           padding: const EdgeInsets.all(kSpaceLg),
           child: Column(
             children: [
-              const DmIconCircle(
+              DmIconCircle(
                 size: 56,
                 icon: Icons.medication_outlined,
                 iconSize: 30,
@@ -425,6 +492,7 @@ class _MedicineTile extends GetView<MedicinesViewModel> {
               : AppColors.onSurfaceVariant,
           toggleLabel: expanded ? 'Hide details' : 'Expand details',
           onToggle: () => controller.toggle(m),
+          onOpen: () => controller.openDetails(m),
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -535,11 +603,7 @@ class _MedicineTile extends GetView<MedicinesViewModel> {
                   minHeight: 56,
                   expand: true,
                   children: [
-                    const Icon(
-                      Icons.tune,
-                      size: 22,
-                      color: AppColors.onSurface,
-                    ),
+                    Icon(Icons.tune, size: 22, color: AppColors.onSurface),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
@@ -561,7 +625,7 @@ class _MedicineTile extends GetView<MedicinesViewModel> {
             padding: const EdgeInsets.only(top: 4),
             child: Row(
               children: [
-                const Icon(Icons.history, size: 18, color: AppColors.primary),
+                Icon(Icons.history, size: 18, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -708,7 +772,11 @@ class _CardHeader extends StatelessWidget {
     required this.toggleColor,
     required this.toggleLabel,
     required this.onToggle,
+    this.onOpen,
   });
+
+  /// Opens Medication Details.
+  final VoidCallback? onOpen;
 
   final IconData icon;
   final Color iconColor;
@@ -737,37 +805,45 @@ class _CardHeader extends StatelessWidget {
         ),
         const SizedBox(width: kSpaceMd),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onOpen,
+            child: Semantics(
+              button: onOpen != null,
+              label: onOpen == null ? null : 'Open $name details',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.titleLg
-                          .copyWith(color: AppColors.onSurface)
-                          .weight(FontWeight.w700),
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.titleLg
+                              .copyWith(color: AppColors.onSurface)
+                              .weight(FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      DmTag(
+                        label: tag,
+                        color: tagColor,
+                        textColor: tagTextColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  DmTag(
-                    label: tag,
-                    color: tagColor,
-                    textColor: tagTextColor,
-                    fontWeight: FontWeight.w600,
+                  Text(
+                    subtitle,
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
-              Text(
-                subtitle,
-                style: AppTextStyles.bodyMd.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -860,7 +936,7 @@ class _Details extends GetView<MedicinesViewModel> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 2),
                       child: Icon(
                         Icons.restaurant,
@@ -887,7 +963,7 @@ class _Details extends GetView<MedicinesViewModel> {
               _Box(
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.calendar_today_outlined,
                       size: 20,
                       color: AppColors.primary,
@@ -958,11 +1034,7 @@ class _RunOutBox extends GetView<MedicinesViewModel> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.event_repeat,
-                size: 22,
-                color: AppColors.secondary,
-              ),
+              Icon(Icons.event_repeat, size: 22, color: AppColors.secondary),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -993,7 +1065,7 @@ class _RunOutBox extends GetView<MedicinesViewModel> {
             expand: true,
             shadow: kShadowSm,
             children: [
-              const Icon(
+              Icon(
                 Icons.shopping_bag_outlined,
                 size: 18,
                 color: AppColors.onPrimary,
@@ -1035,7 +1107,7 @@ class _LogRow extends StatelessWidget {
             Icon(
               taken ? Icons.check_circle : Icons.cancel_outlined,
               size: 18,
-              color: taken ? AppColors.primary : AppColors.onSurfaceVariant,
+              color: taken ? AppColors.success : AppColors.neutral,
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -1114,7 +1186,7 @@ class _ScheduleControls extends GetView<MedicinesViewModel> {
                           style: label,
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         Icons.arrow_forward_ios,
                         size: 18,
                         color: AppColors.onSurfaceVariant,
@@ -1198,7 +1270,7 @@ class _CareBanner extends GetView<MedicinesViewModel> {
       padding: const EdgeInsets.all(kSpaceMd),
       child: Row(
         children: [
-          const DmIconCircle(
+          DmIconCircle(
             size: 40,
             icon: Icons.chevron_left,
             iconSize: 22,

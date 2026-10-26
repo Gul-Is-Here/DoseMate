@@ -26,7 +26,7 @@ class LoginTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     const radius = BorderRadius.all(Radius.circular(16));
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: radius,
         boxShadow: AppTheme.shadowSm,
@@ -42,7 +42,7 @@ class LoginTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: AppTextStyles.bodyLg.copyWith(
-              color: AppColors.outline.withValues(alpha: 0.7),
+              color: AppColors.onSurfaceVariant,
             ),
             prefixIcon: Icon(icon, size: 22, color: AppColors.outline),
             prefixIconConstraints: const BoxConstraints(minWidth: 48),
@@ -52,12 +52,13 @@ class LoginTextField extends StatelessWidget {
               borderRadius: radius,
               borderSide: BorderSide.none,
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(color: AppColors.outline),
+            ),
             focusedBorder: OutlineInputBorder(
               borderRadius: radius,
-              borderSide: BorderSide(
-                color: AppColors.primary.withValues(alpha: 0.2),
-                width: 2,
-              ),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
             ),
           ),
         ),

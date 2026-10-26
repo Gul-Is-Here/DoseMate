@@ -66,8 +66,8 @@ class _SignupTextFieldState extends State<SignupTextField> {
                 : AppColors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: focused ? AppColors.primaryContainer : Colors.transparent,
-              width: 2,
+              color: focused ? AppColors.primary : AppColors.outline,
+              width: focused ? 2 : 1,
             ),
             boxShadow: AppTheme.shadowSm,
           ),
@@ -82,7 +82,7 @@ class _SignupTextFieldState extends State<SignupTextField> {
               border: InputBorder.none,
               hintText: widget.hint,
               hintStyle: AppTextStyles.bodyLg.copyWith(
-                color: AppColors.outline,
+                color: AppColors.onSurfaceVariant,
               ),
               prefixIcon: Icon(widget.icon, size: 18, color: AppColors.outline),
               prefixIconConstraints: const BoxConstraints(minWidth: 46),

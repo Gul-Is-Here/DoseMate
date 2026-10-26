@@ -58,6 +58,22 @@ class ProfileRepository {
   String newProfileId(String uid) => _profiles(uid).doc().id;
 
   /// Live list of the account's profiles. Errors arrive as [ProfileFailure].
+  /// Profiles other accounts shared with [uid], live.
+  Stream<List<UserProfile>> watchSharedProfiles(String uid) => _firestore
+      .collection('users')
+      .doc(uid)
+      .collection('sharedProfiles')
+      .snapshots()
+      .map(
+        (snapshot) => [
+          for (final doc in snapshot.docs) UserProfile.shared(doc.data()),
+        ],
+      )
+      .handleError((Object e) {
+        if (e is FirebaseException) throw _failure(_Operation.load, e);
+        throw e;
+      });
+
   Stream<List<UserProfile>> watchProfiles(String uid) => _profiles(uid)
       .snapshots()
       .map(

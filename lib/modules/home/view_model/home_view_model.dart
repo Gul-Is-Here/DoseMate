@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 
 import '../../../app/routes/app_routes.dart';
 import '../../../core/utils/care_dates.dart';
+import '../../../core/utils/dose_state.dart';
 import '../../../core/utils/contact_links.dart';
 import '../../../data/models/medicine.dart';
 import '../../../data/models/user_profile.dart';
@@ -9,9 +10,13 @@ import '../../../data/models/visit.dart';
 import '../../../data/repositories/care_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/care_service.dart';
+import '../../../data/services/notification_service.dart';
 import '../../../data/services/profile_service.dart';
 import '../../../widgets/confirm_dialog.dart';
-import '../../../widgets/profile_switcher_sheet.dart';
+import '../../medicine_details/view_model/medicine_details_view_model.dart';
+import '../../shell/view_model/shell_view_model.dart';
+import '../../visit_details/view_model/visit_details_view_model.dart';
+import '../../../widgets/app_snackbar.dart';
 
 /// What happened to the last dose acted on from the next dose card.
 enum DoseAction { taken, snoozed, skipped }
@@ -42,23 +47,13 @@ class HomeViewModel extends GetxController {
     return name == null || name.isEmpty ? null : name;
   }
 
-  /// "Eleanor (Self)" / "Ruth (Parent)" for the header switcher chip.
-  String get profileChipLabel {
-    final profile = activeProfile;
-    if (profile == null) return 'Profile';
-    final role = profile.isSelf ? 'Self' : profile.type.label;
-    return '${firstName ?? profile.type.label} ($role)';
-  }
-
-  String greeting([DateTime? now]) {
-    final hour = (now ?? care.now()).hour;
-    final part = hour < 12
-        ? 'morning'
-        : hour < 17
-        ? 'afternoon'
-        : 'evening';
-    final name = firstName;
-    return name == null ? 'Good $part' : 'Good $part, $name';
+  @override
+  void onReady() {
+    super.onReady();
+    // Home is the first screen after sign in and setup: ask for alerts here.
+    if (Get.isRegistered<NotificationService>()) {
+      Get.find<NotificationService>().askOnce();
+    }
   }
 
   @override
@@ -67,7 +62,6 @@ class HomeViewModel extends GetxController {
     // Feedback and dismissals belong to the profile they were made for.
     ever(care.profiles.activeProfileId, (_) {
       feedback.value = null;
-      snoozed.clear();
       dismissedRefills.clear();
     });
   }
@@ -91,6 +85,14 @@ class HomeViewModel extends GetxController {
   int get takenToday => todaysDoses
       .where((o) => care.logFor(o)?.status == DoseStatus.taken)
       .length;
+
+  int get skippedToday => todaysDoses
+      .where((o) => care.logFor(o)?.status == DoseStatus.skipped)
+      .length;
+
+  /// Doses not logged yet, overdue ones included.
+  int get remainingToday =>
+      todaysDoses.where((o) => care.logFor(o) == null).length;
 
   /// "1 of 2 doses taken today".
   String get progressTitle {
@@ -117,9 +119,8 @@ class HomeViewModel extends GetxController {
     return total == 0 ? 0 : takenToday / total;
   }
 
-  /// Local snoozes (occurrence id → until). Not saved; reminders don't
-  /// exist yet.
-  final snoozed = <String, DateTime>{}.obs;
+  /// Shared with Medication Details; cleared when the profile changes.
+  RxMap<String, DateTime> get snoozed => care.snoozed;
 
   final feedback = Rxn<DoseFeedback>();
 
@@ -133,16 +134,14 @@ class HomeViewModel extends GetxController {
     });
   }
 
-  /// "Next Dose: 8:00 PM Tonight".
-  String nextDoseLabel(DoseOccurrence o) {
-    final part = o.minutes >= 17 * 60 ? 'Tonight' : 'Today';
-    return 'Next Dose: ${CareDates.clock(o.minutes)} $part';
-  }
+  /// "Next dose · 8:00 PM".
+  String nextDoseLabel(DoseOccurrence o) =>
+      'Next dose · ${CareDates.clock(o.minutes)}';
 
   /// "In ~3 hrs", "In 20 min", "Now" or "Overdue".
   String countdown(DoseOccurrence o) {
     final diff = o.at.difference(care.now());
-    if (diff.inMinutes < -15) return 'Overdue';
+    if (DoseStates.isOverdue(o, care.now())) return 'Overdue';
     if (diff.inMinutes <= 0) return 'Now';
     if (diff.inMinutes < 60) return 'In ${diff.inMinutes} min';
     return 'In ~${(diff.inMinutes / 60).round()} hrs';
@@ -152,7 +151,7 @@ class HomeViewModel extends GetxController {
 
   Future<void> recordDose(DoseOccurrence o, DoseAction action) async {
     if (action == DoseAction.snoozed) {
-      snoozed[o.logId] = care.now().add(const Duration(minutes: 15));
+      care.snooze(o);
       feedback.value = DoseFeedback(action, o, care.now());
       return;
     }
@@ -165,7 +164,7 @@ class HomeViewModel extends GetxController {
       feedback.value = DoseFeedback(action, o, care.now());
       if (result == WriteResult.pending) _savedOffline();
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't log dose", e.message);
+      showSnack("Couldn't log dose", e.message);
     }
   }
 
@@ -182,7 +181,7 @@ class HomeViewModel extends GetxController {
       if (log != null) await care.undoDose(log);
       feedback.value = null;
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't undo", e.message);
+      showSnack("Couldn't undo", e.message);
     }
   }
 
@@ -195,13 +194,12 @@ class HomeViewModel extends GetxController {
 
   void dismissRefill(Medicine m) => dismissedRefills.add(m.id);
 
-  /// "Amoxicillin supply will run out in ~2 days based on your schedule."
-  String refillMessage(Medicine m) {
+  /// "Runs out in ~2 days", for the one-line refill banner.
+  String refillShort(Medicine m) {
     final days = m.daysOfSupply;
-    if (m.quantity == 0) return '${m.name} has no doses left on record.';
-    if (days == null) return '${m.name} is running low.';
-    return '${m.name} supply will run out in ~$days '
-        '${days == 1 ? 'day' : 'days'} based on your schedule.';
+    if (m.quantity == 0) return 'None left on record';
+    if (days == null) return 'Running low';
+    return 'Runs out in ~$days ${days == 1 ? 'day' : 'days'}';
   }
 
   Future<void> markRefill(Medicine m) async {
@@ -210,20 +208,27 @@ class HomeViewModel extends GetxController {
     try {
       final result = await care.addSupply(m, count);
       dismissedRefills.remove(m.id);
-      Get.snackbar(
+      showSnack(
         'Supply updated',
         result == WriteResult.pending
             ? "Saved on this device. It will sync when you're back online."
             : 'Added $count doses to ${m.name}.',
       );
     } on CareFailure catch (e) {
-      Get.snackbar("Couldn't update supply", e.message);
+      showSnack("Couldn't update supply", e.message);
     }
   }
 
   // Visits.
 
   Visit? get nextVisit => care.visits.firstOrNull;
+
+  /// Today's full log, in the History tab.
+  void openHistory() {
+    if (Get.isRegistered<ShellViewModel>()) {
+      Get.find<ShellViewModel>().select(ShellViewModel.historyTab);
+    }
+  }
 
   /// "Thursday • 3:30 PM".
   String visitWhen(Visit v) =>
@@ -241,18 +246,36 @@ class HomeViewModel extends GetxController {
 
   void editVisit(Visit v) => Get.toNamed(AppRoutes.addVisit, arguments: v);
 
+  /// Appointment Details for this visit of the shown profile.
+  void openVisit(Visit v) {
+    final pid = care.profileId;
+    if (pid == null) return;
+    Get.toNamed(
+      AppRoutes.visitDetails,
+      arguments: VisitDetailsArgs(visitId: v.id, profileId: pid),
+    );
+  }
+
   void addMedicine() => Get.toNamed(AppRoutes.addMedicine);
+
+  /// Medication Details for this scheduled dose of the shown profile.
+  void openDetails(DoseOccurrence o) {
+    final pid = care.profileId;
+    if (pid == null) return;
+    Get.toNamed(
+      AppRoutes.medicineDetails,
+      arguments: MedicineDetailsArgs.forDose(o, profileId: pid),
+    );
+  }
 
   void addVisit() => Get.toNamed(AppRoutes.addVisit);
 
   Future<void> retry() => care.retry();
 
-  void _savedOffline() => Get.snackbar(
+  void _savedOffline() => showSnack(
     'Saved on this device',
     "It will sync when you're back online.",
   );
-
-  void openProfiles() => ProfileSwitcherSheet.show();
 
   /// The auth listener routes to sign in once Firebase reports the logout.
   Future<void> signOut() => _auth.signOut();

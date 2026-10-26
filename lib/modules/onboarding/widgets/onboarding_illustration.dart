@@ -83,7 +83,7 @@ class OnboardingIllustration extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.check_circle,
                         color: AppColors.primary,
                         size: 16,

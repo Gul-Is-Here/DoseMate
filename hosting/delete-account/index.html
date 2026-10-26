@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete Your DoseMate Account</title>
+<meta name="description" content="How to delete your DoseMate account and data, what is deleted, and what is kept.">
+<meta name="color-scheme" content="light dark">
+<link rel="canonical" href="https://dosemate-70150.web.app/delete-account/">
+<style>
+:root {
+  --bg: #F7F8FC; --card: #FFFFFF; --text: #191B2A; --muted: #50536A;
+  --line: #E2E4EE; --accent: #4F46E5; --accent-soft: #EAE8FF; --brand: #8B80D9;
+  --warn-soft: #FFF0D6; --warn: #6E4500;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11121C; --card: #1B1D2B; --text: #ECEDF6; --muted: #B4B6C8;
+    --line: #2E3142; --accent: #B9B3FF; --accent-soft: #2A2850; --brand: #8B80D9;
+    --warn-soft: #3A2E12; --warn: #F5D38A;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11121C; --card: #1B1D2B; --text: #ECEDF6; --muted: #B4B6C8;
+  --line: #2E3142; --accent: #B9B3FF; --accent-soft: #2A2850; --brand: #8B80D9;
+  --warn-soft: #3A2E12; --warn: #F5D38A;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--card); padding: 8px 12px; border-radius: 8px; }
+.skip:focus { left: 16px; }
+header.top { border-bottom: 1px solid var(--line); background: var(--card); }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 16px 0; font-weight: 700; font-size: 18px; }
+main { padding: 32px 0 56px; }
+h1 { font-size: clamp(28px, 6vw, 38px); line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.5px; }
+h2 { font-size: 22px; line-height: 1.3; margin: 40px 0 8px; scroll-margin-top: 16px; }
+h3 { font-size: 17px; margin: 24px 0 4px; }
+p, li { overflow-wrap: anywhere; }
+.meta { color: var(--muted); margin: 0 0 24px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 16px 0; }
+.summary { background: var(--accent-soft); border-color: transparent; }
+.summary ul { margin: 8px 0 0; padding-left: 20px; }
+.note { background: var(--warn-soft); color: var(--text); border-color: transparent; }
+.note strong { color: var(--warn); }
+nav.toc ol { columns: 2 220px; margin: 8px 0 0; padding-left: 22px; }
+nav.toc li { margin: 2px 0; break-inside: avoid; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-top: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; border-top: 0; }
+.table-wrap { overflow-x: auto; }
+@media (max-width: 560px) {
+  table.stack thead { display: none; }
+  table.stack tr { display: block; border-top: 1px solid var(--line); padding: 8px 0; }
+  table.stack td { display: block; border: 0; padding: 2px 0; }
+  table.stack td:first-child { font-weight: 600; }
+}
+footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; padding: 24px 0 40px; }
+ol.steps { padding-left: 22px; }
+ol.steps li { margin: 6px 0; }
+.mail { display: inline-block; margin-top: 8px; padding: 12px 18px; border-radius: 14px; background: var(--accent); color: var(--card); font-weight: 600; text-decoration: none; }
+:root .mail { color: #FFFFFF; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mail { color: #11121C; } }
+:root[data-theme="dark"] .mail { color: #11121C; }
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to the steps</a>
+<header class="top">
+  <div class="wrap brand">
+    <svg width="36" height="36" viewBox="0 0 120 120" role="img" aria-label="DoseMate logo">
+      <rect width="120" height="120" rx="33.6" fill="#8B80D9"/>
+      <g stroke-linecap="round" stroke-width="20" fill="none">
+        <line x1="60" y1="70" x2="45" y2="43.3" stroke="#FFFFFF"/>
+        <line x1="60" y1="70" x2="75" y2="43.3" stroke="#5BAA9B"/>
+      </g>
+    </svg>
+    <span>DoseMate</span>
+  </div>
+</header>
+
+<main id="content" class="wrap">
+  <h1>Delete your DoseMate account</h1>
+  <p class="meta">DoseMate, by Gul Faraz Ahmed · Updated 26 October 2026</p>
+
+  <div class="card summary">
+    <strong>Deleting your account permanently removes it and all its data. This can’t be undone.</strong>
+    <p style="margin:8px 0 0">Want a copy first? In the app, export your dose history as a PDF or CSV from History.</p>
+  </div>
+
+  <h2 id="in-app">Option 1: Delete in the app (immediate)</h2>
+  <ol class="steps">
+    <li>Open DoseMate and sign in.</li>
+    <li>Go to <strong>Settings</strong>, then tap <strong>Delete Account</strong>.</li>
+    <li>Read what will be deleted, and tick <em>I understand</em>.</li>
+    <li>Confirm it’s you with your password, or with your Google account if you sign in with Google.</li>
+    <li>Tap <strong>Delete Account</strong> and keep the app open until you’re returned to the sign-in screen.</li>
+  </ol>
+  <p>If something goes wrong partway, the app tells you and you can tap <strong>Try Again</strong> to finish.</p>
+
+  <h2 id="email">Option 2: Ask us by email (no app needed)</h2>
+  <p>If you can’t use the app, email us from the address you use with DoseMate and ask us to delete your account. We may ask you to confirm the request, and we’ll complete it within 30 days.</p>
+  <a class="mail" href="mailto:gulfarazahmed08@gmail.com?subject=DoseMate%20account%20deletion%20request&amp;body=Please%20delete%20my%20DoseMate%20account%20and%20its%20data.%0D%0AAccount%20email%3A%20">Email gulfarazahmed08@gmail.com</a>
+
+  <h2 id="deleted">What is deleted</h2>
+  <ul>
+    <li>Your sign-in account (email and name, or your Google sign-in link).</li>
+    <li>Every profile you manage, yours and your family’s, with their names, dates of birth, emergency contacts and photos.</li>
+    <li>All medicines, schedules, dose records (taken, skipped and snoozed), supply counts and medicine photos.</li>
+    <li>All appointments, including clinic addresses, phone numbers, notes and saved map locations.</li>
+    <li>Access you gave other people to your profiles, and every invitation you sent.</li>
+    <li>Your access to profiles other people shared with you. Their own profiles and data aren’t affected.</li>
+    <li>Your devices’ push alert registrations, and the reminders and stored data on the phone you delete from.</li>
+  </ul>
+
+  <h2 id="kept">What is kept, and for how long</h2>
+  <ul>
+    <li><strong>A deletion record</strong> holding only your account ID and timestamps, for about 65 minutes. It lets us remove anything another of your signed-in phones saves in that time. If a deletion can’t finish and your account still exists, the record stays until you try again, for up to 30 days.</li>
+    <li><strong>Server logs</strong> (which can include IP addresses and error codes) for up to 30 days.</li>
+    <li><strong>Other people’s records:</strong> if someone else invited you to help with a profile, their record of that invitation (with the email address they typed) stays in their account until they delete it.</li>
+    <li><strong>Copies you made:</strong> exports or emails you sent to others are outside our control.</li>
+  </ul>
+  <p>We don’t keep database backups, so deleted data can’t be restored.</p>
+
+  <h2 id="other-devices">Other phones</h2>
+  <p>Other phones signed in to your account stop getting alerts straight away. Reminders already scheduled on them, up to two days ahead, are removed the next time the app runs there. To remove them sooner, log out or uninstall the app on those phones.</p>
+
+  <p style="margin-top:32px">More about how DoseMate handles your information: <a href="/privacy/">Privacy Policy</a>.</p>
+</main>
+
+<footer>
+  <div class="wrap">© 2026 Gul Faraz Ahmed · DoseMate · <a href="mailto:gulfarazahmed08@gmail.com">gulfarazahmed08@gmail.com</a></div>
+</footer>
+</body>
+</html>

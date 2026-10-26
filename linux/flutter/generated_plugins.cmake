@@ -3,7 +3,10 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  awesome_notifications
   file_selector_linux
+  flutter_timezone
+  printing
   url_launcher_linux
 )
 

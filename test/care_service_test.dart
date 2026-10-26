@@ -357,7 +357,7 @@ void main() {
     expect(care.visits.map((v) => v.title), ['tomorrow', 'later']);
   });
 
-  test('delete removes the medicine with its logs in one batch', () async {
+  test('delete removes the medicine with all its logs', () async {
     await care.saveMedicine('self', med('m1'), isNew: true);
     await settle();
     await care.logDose(care.todaysDoses.first, DoseStatus.taken);
@@ -367,5 +367,40 @@ void main() {
     expect(care.medicines, isEmpty);
     expect(care.logs, isEmpty);
     expect(db.logsOf(uid, 'self'), isEmpty);
+  });
+
+  test('delete also removes undone logs', () async {
+    await care.saveMedicine('self', med('m1'), isNew: true);
+    await settle();
+    final o = care.todaysDoses.first;
+    await care.logDose(o, DoseStatus.taken);
+    await settle();
+    await care.undoDose(care.logFor(o)!);
+    await settle();
+    expect(db.undoneOf(uid, 'self'), contains(o.logId));
+    await care.deleteMedicine('self', care.medicineById('m1')!);
+    await settle();
+    // Asked for by id (known from its revision), not only by the query.
+    expect(db.deletedLogIds, contains(o.logId));
+    expect(db.undoneOf(uid, 'self'), isEmpty);
+  });
+
+  test('changing a Taken from before revisions marks it as counted', () async {
+    await care.saveMedicine('self', med('m1'), isNew: true);
+    await settle();
+    final o = care.todaysDoses.first;
+    db.logsOf(uid, 'self')[o.logId] = DoseLog(
+      medicineId: 'm1',
+      day: o.day,
+      minutes: o.minutes,
+      status: DoseStatus.taken,
+    );
+    db.emit();
+    await settle();
+    await care.logDose(o, DoseStatus.skipped);
+    expect(db.legacyMarked, [o.logId]);
+    await settle();
+    await care.logDose(o, DoseStatus.taken);
+    expect(db.legacyMarked, [o.logId]);
   });
 }

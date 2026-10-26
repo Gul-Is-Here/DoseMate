@@ -19,6 +19,9 @@ class ProfileService extends GetxService {
   final ProfileRepository repository;
 
   final profiles = <UserProfile>[].obs;
+
+  /// Profiles other accounts shared with this one (care circles).
+  final shared = <UserProfile>[].obs;
   final activeProfileId = UserProfile.selfId.obs;
   final account = const AccountState().obs;
   final status = ProfilesStatus.idle.obs;
@@ -27,6 +30,7 @@ class ProfileService extends GetxService {
   String? _uid;
   String _selfName = '';
   StreamSubscription<List<UserProfile>>? _subscription;
+  StreamSubscription<List<UserProfile>>? _sharedSubscription;
 
   /// The active profile, falling back to Myself when it no longer exists.
   UserProfile? get activeProfile =>
@@ -34,7 +38,9 @@ class ProfileService extends GetxService {
 
   UserProfile? get selfProfile => byId(UserProfile.selfId);
 
-  UserProfile? byId(String id) => profiles.firstWhereOrNull((p) => p.id == id);
+  UserProfile? byId(String id) =>
+      profiles.firstWhereOrNull((p) => p.id == id) ??
+      shared.firstWhereOrNull((p) => p.id == id);
 
   bool get isReady => status.value == ProfilesStatus.ready;
 
@@ -88,6 +94,20 @@ class ProfileService extends GetxService {
             if (!firstSnapshot.isCompleted) firstSnapshot.complete();
           },
         );
+    // Shared profiles are extra: if they fail to load, own profiles still
+    // work and the shared ones simply don't appear.
+    _sharedSubscription = repository
+        .watchSharedProfiles(uid)
+        .listen(
+          (list) {
+            if (_uid != uid) return;
+            shared.value = list
+              ..sort((a, b) => a.fullName.compareTo(b.fullName));
+          },
+          onError: (Object _) {
+            if (_uid == uid) shared.clear();
+          },
+        );
     await firstSnapshot.future;
   }
 
@@ -129,8 +149,11 @@ class ProfileService extends GetxService {
     _creatingSelf = null;
     _subscription?.cancel();
     _subscription = null;
+    _sharedSubscription?.cancel();
+    _sharedSubscription = null;
     _uid = null;
     profiles.clear();
+    shared.clear();
     activeProfileId.value = UserProfile.selfId;
     account.value = const AccountState();
     status.value = ProfilesStatus.idle;

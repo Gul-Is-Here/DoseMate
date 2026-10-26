@@ -38,7 +38,7 @@ class PrimaryButton extends StatelessWidget {
           ),
           onPressed: loading ? null : onPressed,
           child: loading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 22,
                   height: 22,
                   child: CircularProgressIndicator(

@@ -9,6 +9,7 @@ import '../../../widgets/primary_button.dart';
 import '../../signup/widgets/social_button.dart';
 import '../view_model/login_view_model.dart';
 import '../widgets/login_text_field.dart';
+import '../../../widgets/app_logo.dart';
 
 class LoginView extends GetView<LoginViewModel> {
   const LoginView({super.key});
@@ -96,39 +97,6 @@ class LoginView extends GetView<LoginViewModel> {
                 ),
               ),
               const SizedBox(height: 8),
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  borderRadius: BorderRadius.all(Radius.circular(9999)),
-                  boxShadow: AppTheme.shadowSm,
-                ),
-                child: SizedBox(
-                  height: 52,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.surfaceContainerLow,
-                      foregroundColor: AppColors.onSurface,
-                      shape: const StadiumBorder(),
-                    ),
-                    onPressed: controller.signInWithBiometrics,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.fingerprint,
-                          size: 22,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Sign in with Face ID / Fingerprint',
-                          style: AppTextStyles.labelMd,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
               Obx(
                 () => SocialButton.google(
                   label: 'Continue with Google',
@@ -184,7 +152,7 @@ class _TopBar extends StatelessWidget {
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: Get.back,
-            child: const SizedBox(
+            child: SizedBox(
               width: 48,
               height: 48,
               child: Icon(
@@ -195,39 +163,7 @@ class _TopBar extends StatelessWidget {
             ),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(9999),
-            boxShadow: AppTheme.shadowSm,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryFixed,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.medication,
-                  size: 18,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                AppStrings.appName,
-                style: AppTextStyles.titleMd.copyWith(
-                  color: AppColors.primary,
-                  letterSpacing: -0.025 * 18,
-                ),
-              ),
-            ],
-          ),
-        ),
+        const AppLogo(size: 40),
         SizedBox(
           width: 48,
           height: 48,
@@ -235,7 +171,7 @@ class _TopBar extends StatelessWidget {
             child: Container(
               width: 10,
               height: 10,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
@@ -268,7 +204,7 @@ class _HeroCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                const ColoredBox(color: AppColors.surfaceContainer),
+                ColoredBox(color: AppColors.surfaceContainer),
                 Image.asset('assets/login.png', fit: BoxFit.cover),
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -303,7 +239,7 @@ class _HeroCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.verified_user,
                         size: 14,
                         color: AppColors.onPrimaryFixedVariant,
@@ -373,7 +309,7 @@ class _RememberMe extends StatelessWidget {
                 child: AnimatedScale(
                   duration: const Duration(milliseconds: 150),
                   scale: checked ? 1 : 0,
-                  child: const Icon(
+                  child: Icon(
                     Icons.check,
                     size: 16,
                     color: AppColors.onPrimary,
@@ -411,11 +347,11 @@ class _TrustBanner extends StatelessWidget {
             margin: const EdgeInsets.only(top: 2),
             width: 32,
             height: 32,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.shield, size: 18, color: AppColors.primary),
+            child: Icon(Icons.shield, size: 18, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
