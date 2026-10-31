@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/medicine.dart';
+import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_shell.dart';
 import '../../../widgets/skeleton.dart';
 import '../view_model/medicine_details_view_model.dart';
@@ -79,6 +81,8 @@ class _Details extends StatelessWidget {
                 _Actions(),
                 SizedBox(height: kSpaceMd + 8),
                 _HelpCard(),
+                SizedBox(height: kSpaceLg),
+                _DetailsAd(),
               ],
             ),
           ),
@@ -86,6 +90,15 @@ class _Details extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A banner after everything else, clear of the action buttons.
+class _DetailsAd extends StatelessWidget {
+  const _DetailsAd();
+
+  @override
+  Widget build(BuildContext context) =>
+      AdBanner(unitId: AppConfig.adBannerDetails, inline: true);
 }
 
 /// [_Details] while the medicine loads: status, reminder, hero and note.

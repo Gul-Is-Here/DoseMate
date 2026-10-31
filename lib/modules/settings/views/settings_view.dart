@@ -121,6 +121,18 @@ class SettingsView extends GetView<SettingsViewModel> {
                       trailing: Icons.open_in_new,
                       onTap: controller.openPrivacyPolicy,
                     ),
+                    if (controller.ads case final ads?)
+                      Obx(
+                        () => ads.privacyOptionsRequired.value
+                            ? _Row(
+                                key: const ValueKey('settings-ad-privacy'),
+                                icon: Icons.ads_click_outlined,
+                                title: 'Ad privacy choices',
+                                subtitle: 'Change your ad consent',
+                                onTap: ads.showPrivacyOptions,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
                   ],
                 ),
                 const SizedBox(height: kSpaceLg),

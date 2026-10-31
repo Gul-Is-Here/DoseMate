@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_shell.dart';
 import '../../../widgets/skeleton.dart';
 import '../view_model/visit_details_view_model.dart';
@@ -87,6 +89,9 @@ class _Details extends GetView<VisitDetailsViewModel> {
                   ],
                   const SizedBox(height: kSpaceMd + 4),
                   const _Actions(),
+                  // Well clear of the buttons, so a tap can't land on it.
+                  const SizedBox(height: kSpaceLg * 2),
+                  AdBanner(unitId: AppConfig.adBannerDetails, inline: true),
                 ],
               );
             }),

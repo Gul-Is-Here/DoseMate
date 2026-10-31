@@ -35,6 +35,21 @@ abstract class AppConfig {
 
   static const appId = 'com.dosemate.mobile';
 
+  /// AdMob banner units (Android). Debug and profile builds use Google's
+  /// test unit: live ads must not be shown or tapped while developing.
+  static String get adBannerShell =>
+      kReleaseMode ? 'ca-app-pub-2744970719381152/7980827055' : _testBanner;
+  static String get adBannerDetails =>
+      kReleaseMode ? 'ca-app-pub-2744970719381152/2476771821' : _testBanner;
+  static const _testBanner = 'ca-app-pub-3940256099942544/9214589741';
+
+  /// AdMob native units, shown in lists (same test rule as the banners).
+  static String get adNativeMedicines =>
+      kReleaseMode ? 'ca-app-pub-2744970719381152/2235218345' : _testNative;
+  static String get adNativeHistory =>
+      kReleaseMode ? 'ca-app-pub-2744970719381152/8687404065' : _testNative;
+  static const _testNative = 'ca-app-pub-3940256099942544/2247696110';
+
   /// The public privacy policy (Firebase Hosting, hosting/privacy/).
   static final privacyPolicyUrl = Uri.https(
     'dosemate-70150.web.app',

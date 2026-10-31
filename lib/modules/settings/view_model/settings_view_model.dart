@@ -6,6 +6,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/utils/contact_links.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../data/models/user_profile.dart';
+import '../../../data/services/ads_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../data/services/profile_service.dart';
@@ -89,6 +90,9 @@ class SettingsViewModel extends GetxController {
   void openFamily() => Get.toNamed(AppRoutes.family);
 
   void openNotifications() => Get.toNamed(AppRoutes.notifications);
+
+  AdsService? get ads =>
+      Get.isRegistered<AdsService>() ? Get.find<AdsService>() : null;
 
   void openPrivacyPolicy() => openWebPage(AppConfig.privacyPolicyUrl);
 

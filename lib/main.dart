@@ -10,6 +10,7 @@ import 'core/constants/app_strings.dart';
 import 'core/theme/app_palette.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
+import 'data/services/ads_service.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -19,6 +20,11 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final auth = await InitialBinding.init();
   runApp(DoseMateApp(initialRoute: auth.initialRoute));
+  // Banners: consent first where required; never delays the app.
+  if (AdsService.supported) {
+    final ads = Get.put(AdsService(), permanent: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) => ads.start());
+  }
 }
 
 class DoseMateApp extends StatelessWidget {

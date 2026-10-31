@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/care_dates.dart';
@@ -8,6 +9,7 @@ import '../../../data/models/medicine.dart';
 import '../../../data/services/care_service.dart';
 import '../../../data/services/history_service.dart';
 import '../../../widgets/app_shell.dart';
+import '../../../widgets/native_ad_card.dart';
 import '../../../widgets/skeleton.dart';
 import '../view_model/history_view_model.dart';
 
@@ -71,6 +73,7 @@ class _HistoryViewState extends State<HistoryView> {
                         _RangeTabs(),
                         SizedBox(height: kSpaceMd),
                         _SummaryCard(),
+                        _HistoryAd(),
                         SizedBox(height: kSpaceMd + 4),
                         _FilterRow(),
                         SizedBox(height: kSpaceMd + 4),
@@ -157,6 +160,17 @@ class _TitleRow extends GetView<HistoryViewModel> {
       ],
     );
   }
+}
+
+/// A native ad under the summary, above the log list.
+class _HistoryAd extends StatelessWidget {
+  const _HistoryAd();
+
+  @override
+  Widget build(BuildContext context) => NativeAdCard(
+    unitId: AppConfig.adNativeHistory,
+    padding: const EdgeInsets.only(top: kSpaceMd + 4),
+  );
 }
 
 class _RangeTabs extends GetView<HistoryViewModel> {

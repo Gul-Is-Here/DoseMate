@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/care_dates.dart';
 import '../../../data/models/medicine.dart';
 import '../../../data/services/care_service.dart';
 import '../../../widgets/app_shell.dart';
+import '../../../widgets/native_ad_card.dart';
 import '../../../widgets/skeleton.dart';
 import '../view_model/medicines_view_model.dart';
 
@@ -441,6 +443,13 @@ class _MedicineList extends GetView<MedicinesViewModel> {
               medicine: m,
               expanded: controller.expanded.contains(m.id),
             ),
+            // One ad in the list: after the third medicine, or the last.
+            if (i == (list.length < 3 ? list.length : 3) - 1)
+              NativeAdCard(
+                key: const ValueKey('medicines-ad'),
+                unitId: AppConfig.adNativeMedicines,
+                padding: const EdgeInsets.only(top: kSpaceMd),
+              ),
           ],
         ],
       );

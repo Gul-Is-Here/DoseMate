@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_shell.dart';
 import '../../calendar/views/calendar_view.dart';
 import '../../history/views/history_view.dart';
@@ -25,28 +27,39 @@ class MainShellView extends GetView<ShellViewModel> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: Obx(() {
-        final current = controller.index.value;
-        final visited = controller.visited;
-        return IndexedStack(
-          index: current,
-          children: [
-            for (var i = 0; i < ShellViewModel.tabCount; i++)
-              // Hidden tabs keep their state but don't tick or take focus.
-              TickerMode(
-                enabled: i == current,
-                child: FocusTraversalGroup(
-                  child: ExcludeFocus(
-                    excluding: i != current,
-                    child: visited.contains(i)
-                        ? KeyedSubtree(key: ValueKey('tab-$i'), child: _tab(i))
-                        : const SizedBox.shrink(),
-                  ),
-                ),
-              ),
-          ],
-        );
-      }),
+      body: Column(
+        children: [
+          Expanded(
+            child: Obx(() {
+              final current = controller.index.value;
+              final visited = controller.visited;
+              return IndexedStack(
+                index: current,
+                children: [
+                  for (var i = 0; i < ShellViewModel.tabCount; i++)
+                    // Hidden tabs keep their state but don't tick or take focus.
+                    TickerMode(
+                      enabled: i == current,
+                      child: FocusTraversalGroup(
+                        child: ExcludeFocus(
+                          excluding: i != current,
+                          child: visited.contains(i)
+                              ? KeyedSubtree(
+                                  key: ValueKey('tab-$i'),
+                                  child: _tab(i),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            }),
+          ),
+          // One banner for every tab, above the tab bar.
+          AdBanner(unitId: AppConfig.adBannerShell),
+        ],
+      ),
       bottomNavigationBar: Obx(
         () => AppBottomNav(
           activeIndex: controller.index.value,
